@@ -8,6 +8,8 @@ from torchvision.datasets.folder import ImageFolder, default_loader
 
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.data import create_transform
+from mcloader import ClassificationDataset
+from .img_folder import ImageFolder2
 
 class INatDataset(ImageFolder):
     def __init__(self, root, train=True, year=2018, transform=None, target_transform=None,
@@ -49,6 +51,9 @@ class INatDataset(ImageFolder):
             target_current_true = targeter[categors[category]]
             self.samples.append((path_current, target_current_true))
 
+    # __getitem__ and __len__ inherited from ImageFolder
+
+
 def build_dataset(is_train, args):
     transform = build_transform(is_train, args)
 
@@ -58,7 +63,7 @@ def build_dataset(is_train, args):
     elif args.data_set == 'IMNET':
         if not args.use_mcloader:
             root = os.path.join(args.data_path, 'train' if is_train else 'val')
-            dataset = datasets.ImageFolder(root, transform=transform)
+            dataset = ImageFolder2(root, transform=transform)
         else:
             dataset = ClassificationDataset(
                 'train' if is_train else 'val',
