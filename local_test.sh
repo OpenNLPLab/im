@@ -9,7 +9,8 @@ echo $CONFIG
 PROG=../im/classification/main.py
 DATA=../pvc/data
 
-for ARCH in tnn_2d_vit_tiny_rpe_v8_l1 #tnn_2d_vit_tiny_rpe_v8_l2 tnn_2d_vit_tiny_rpe_v8_l3
+for ARCH in tnn_2d_vit_tiny_rpe_v8_l1 tnn_2d_vit_tiny_rpe_v8_l2 tnn_2d_vit_tiny_rpe_v8_l3 \
+            tnn_2d_vit_tiny_rpe_v8_l4 tnn_2d_vit_tiny_rpe_v8_l5 tnn_2d_vit_tiny_rpe_v8_l6
 do
     CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=$GPUS --master_port=$PORT \
         --use_env $PROG --data-set CIFAR --batch-size $batch_size --num_workers 1 --lr 3e-3 \

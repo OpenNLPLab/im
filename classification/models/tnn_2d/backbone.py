@@ -27,7 +27,7 @@ class Block(nn.Module):
         m=14,
     ):
         super().__init__()
-        self.attn = Gtu2d(
+        self.token_mixer = Gtu2d(
             embed_dim=dim,
             num_heads=num_heads,
             rpe_embedding=rpe_embedding,
@@ -71,7 +71,7 @@ class Block(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, x, H, W):
-        x = x + self.drop_path(self.attn(x, H, W))
+        x = x + self.drop_path(self.token_mixer(x, H, W))
         x = x + self.drop_path(self.norm(self.mlp(x)))
 
         return x

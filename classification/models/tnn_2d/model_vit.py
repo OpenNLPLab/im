@@ -222,5 +222,80 @@ def tnn_2d_vit_tiny_rpe_v8_l3(pretrained=False, **kwargs):
     model.default_cfg = _cfg()
 
     return model
+
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l4(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embdding=rpe_dim,
+        rpe_act="silu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=4,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l5(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embdding=rpe_dim,
+        rpe_act="silu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=5,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l6(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embdding=rpe_dim,
+        rpe_act="silu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=6,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
 ##### rpe layer test
 ########## Deit tiny
