@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
+from einops import rearrange
 
 from .utils import GLU, SimpleRMSNorm
 from .gtu_2d import Gtu2d
@@ -73,5 +74,29 @@ class Block(nn.Module):
     def forward(self, x, H, W):
         x = x + self.drop_path(self.token_mixer(x, H, W))
         x = x + self.drop_path(self.norm(self.mlp(x)))
+
+        return x
+
+# ref: https://github.com/microsoft/Swin-Transformer/blob/main/models/swin_transformer.py
+class DownSample(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
+        self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
+        self.norm = SimpleRMSNorm(4 * dim)
+
+    def forward(self, x):
+        """
+        x: B, H, W, C
+        """
+        B, H, W, C = x.shape
+        assert H % 2 == 0 and W % 2 == 0, f"x size ({H}*{W}) are not even."
+        H1 = H // 2
+        W1 = W // 2
+        
+        x = rearrange(x, 'b (k H) W d -> b H W (k d)', k=2, H=H1)
+        x = rearrange(x, 'b H (k W) d -> b H W (k d)', k=2, W=W1)
+        x = self.norm(x)
+        x = self.reduction(x)
 
         return x

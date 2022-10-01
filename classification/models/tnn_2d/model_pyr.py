@@ -10,25 +10,83 @@ import math
 
 from .utils import GLU, SimpleRMSNorm
 from .gtu_2d import Gtu2d
-from .backbone import Block
+from .backbone import Block, DownSample
 
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
 
-class TNN2DVit(nn.Module):
+class BlockStage(nn.Module):
+    def __init__(
+        self,
+        depth,
+        dim, 
+        num_heads, 
+        rpe_embedding, 
+        rpe_act,
+        glu_dim,
+        glu_act,
+        expand_ratio,
+        shrink_ratio,
+        rpe_layers,
+        use_decay,
+        use_multi_decay,
+        gamma,
+        n,
+        m,
+        use_downsample=True,
+    ):
+        super().__init__()
+        self.layers = nn.ModuleList([])
+        block = []
+        for _ in range(depth):
+            # block.append(
+            self.layers.append(
+                Block(
+                    dim=dim, 
+                    num_heads=num_heads, 
+                    rpe_embedding=rpe_embedding, 
+                    rpe_act=rpe_act,
+                    glu_dim=glu_dim,
+                    glu_act=glu_act,
+                    expand_ratio=expand_ratio,
+                    shrink_ratio=shrink_ratio,
+                    rpe_layers=rpe_layers,
+                    use_decay=use_decay,
+                    use_multi_decay=use_multi_decay,
+                    gamma=gamma,
+                    n=n,
+                    m=m,
+                )
+            )
+        self.use_downsample = use_downsample
+        if self.use_downsample:
+            self.downsample = DownSample(dim)
+        self.H = n
+        self.W = m
+        
+    def forward(self, x):
+        for i, block in enumerate(self.layers):
+            x = block(x, self.H, self.W)
+        if self.use_downsample:
+            x = self.downsample(x)
+        
+        return x
+        
+
+class TNN2DPyr(nn.Module):
     def __init__(
         self, 
         img_size=224, 
-        patch_size=16, 
+        patch_size=4, 
         in_chans=3, 
         num_classes=1000, 
-        embed_dim=384,
+        embed_dim=96,
         rpe_embedding=96,
         num_heads=6,
         rpe_act="silu",
         glu_act="silu",
         glu_dim=576,
-        depth=12, 
+        depths=[2, 2, 6, 2],
         expand_ratio=3,
         shrink_ratio=1,
         channels=3,
@@ -63,26 +121,35 @@ class TNN2DVit(nn.Module):
             self.pos_embedding = nn.Parameter(torch.randn(1, self.H, self.W, embed_dim))
         self.dropout = nn.Dropout(emb_dropout)
 
-        self.layers = nn.ModuleList([])
-        for _ in range(depth):
-            self.layers.append(
-                Block(
-                    dim=embed_dim, 
-                    num_heads=num_heads, 
-                    rpe_embedding=rpe_embedding, 
-                    rpe_act=rpe_act,
-                    glu_dim=glu_dim,
-                    glu_act=glu_act,
-                    expand_ratio=expand_ratio,
-                    shrink_ratio=shrink_ratio,
-                    rpe_layers=rpe_layers,
-                    use_decay=use_decay,
-                    use_multi_decay=use_multi_decay,
-                    gamma=gamma,
-                    n=self.H,
-                    m=self.W,
-                )
+        self.block_stages = nn.ModuleList([])
+        n = self.H
+        m = self.W
+        for i, depth in enumerate(depths):
+            flag = i < len(depths) - 1
+            block_stage = BlockStage(
+                depth=depth,
+                dim=embed_dim, 
+                num_heads=num_heads, 
+                rpe_embedding=rpe_embedding, 
+                rpe_act=rpe_act,
+                glu_dim=glu_dim,
+                glu_act=glu_act,
+                expand_ratio=expand_ratio,
+                shrink_ratio=shrink_ratio,
+                rpe_layers=rpe_layers,
+                use_decay=use_decay,
+                use_multi_decay=use_multi_decay,
+                gamma=gamma,
+                n=n,
+                m=m,
+                use_downsample=flag,
             )
+            self.block_stages.append(block_stage)
+            if flag:
+                embed_dim *= 2
+                glu_dim *= 2
+                n /= 2
+                m /= 2
 
         # classification head
         self.head = nn.Sequential(
@@ -127,8 +194,8 @@ class TNN2DVit(nn.Module):
             x += self.pos_embedding
         x = self.dropout(x)
 
-        for i, block in enumerate(self.layers):
-            x = block(x, self.H, self.W)
+        for i, block_stage in enumerate(self.block_stages):
+            x = block_stage(x)
             
         x = rearrange(x, 'b n m d -> b (n m) d')
         
@@ -139,18 +206,18 @@ class TNN2DVit(nn.Module):
         x = self.head(x)
 
         return x
-    
-########## Deit tiny
-##### rpe layer test
+
+########## Pyramid tiny
 @register_model
-def tnn_2d_vit_tiny_rpe_v8_l1(pretrained=False, **kwargs):
-    dim = 192
+def tnn_2d_pyr_tiny_rpe_v8_l1(pretrained=False, **kwargs):
+    patch_size = 4
+    dim = 48
     glu_dim = dim
     rpe_dim = 32
     num_heads = 1
     depth = 12
-    model = TNN2DVit(
-        patch_size=16, 
+    model = TNN2DPyr(
+        patch_size=patch_size, 
         embed_dim=dim, 
         num_heads=num_heads, 
         rpe_embedding=rpe_dim,
@@ -158,7 +225,7 @@ def tnn_2d_vit_tiny_rpe_v8_l1(pretrained=False, **kwargs):
         glu_act="silu",
         glu_dim=glu_dim,
         expand_ratio=3,
-        depth=depth, 
+        depths=[2, 2, 6, 2], 
         use_pos=False,
         rpe_layers=1,
         **kwargs
@@ -166,130 +233,4 @@ def tnn_2d_vit_tiny_rpe_v8_l1(pretrained=False, **kwargs):
     model.default_cfg = _cfg()
 
     return model
-
-@register_model
-def tnn_2d_vit_tiny_rpe_v8_l2(pretrained=False, **kwargs):
-    dim = 192
-    glu_dim = dim
-    rpe_dim = 32
-    num_heads = 1
-    depth = 12
-    model = TNN2DVit(
-        patch_size=16, 
-        embed_dim=dim, 
-        num_heads=num_heads, 
-        rpe_embedding=rpe_dim,
-        rpe_act="silu",
-        glu_act="silu",
-        glu_dim=glu_dim,
-        expand_ratio=3,
-        depth=depth, 
-        use_pos=False,
-        rpe_layers=2,
-        **kwargs
-    )
-    model.default_cfg = _cfg()
-
-    return model
-
-@register_model
-def tnn_2d_vit_tiny_rpe_v8_l3(pretrained=False, **kwargs):
-    dim = 192
-    glu_dim = dim
-    rpe_dim = 32
-    num_heads = 1
-    depth = 12
-    model = TNN2DVit(
-        patch_size=16, 
-        embed_dim=dim, 
-        num_heads=num_heads, 
-        rpe_embedding=rpe_dim,
-        rpe_act="silu",
-        glu_act="silu",
-        glu_dim=glu_dim,
-        expand_ratio=3,
-        depth=depth, 
-        use_pos=False,
-        rpe_layers=3,
-        **kwargs
-    )
-    model.default_cfg = _cfg()
-
-    return model
-
-@register_model
-def tnn_2d_vit_tiny_rpe_v8_l4(pretrained=False, **kwargs):
-    dim = 192
-    glu_dim = dim
-    rpe_dim = 32
-    num_heads = 1
-    depth = 12
-    model = TNN2DVit(
-        patch_size=16, 
-        embed_dim=dim, 
-        num_heads=num_heads, 
-        rpe_embedding=rpe_dim,
-        rpe_act="silu",
-        glu_act="silu",
-        glu_dim=glu_dim,
-        expand_ratio=3,
-        depth=depth, 
-        use_pos=False,
-        rpe_layers=4,
-        **kwargs
-    )
-    model.default_cfg = _cfg()
-
-    return model
-
-@register_model
-def tnn_2d_vit_tiny_rpe_v8_l5(pretrained=False, **kwargs):
-    dim = 192
-    glu_dim = dim
-    rpe_dim = 32
-    num_heads = 1
-    depth = 12
-    model = TNN2DVit(
-        patch_size=16, 
-        embed_dim=dim, 
-        num_heads=num_heads, 
-        rpe_embedding=rpe_dim,
-        rpe_act="silu",
-        glu_act="silu",
-        glu_dim=glu_dim,
-        expand_ratio=3,
-        depth=depth, 
-        use_pos=False,
-        rpe_layers=5,
-        **kwargs
-    )
-    model.default_cfg = _cfg()
-
-    return model
-
-@register_model
-def tnn_2d_vit_tiny_rpe_v8_l6(pretrained=False, **kwargs):
-    dim = 192
-    glu_dim = dim
-    rpe_dim = 32
-    num_heads = 1
-    depth = 12
-    model = TNN2DVit(
-        patch_size=16, 
-        embed_dim=dim, 
-        num_heads=num_heads, 
-        rpe_embedding=rpe_dim,
-        rpe_act="silu",
-        glu_act="silu",
-        glu_dim=glu_dim,
-        expand_ratio=3,
-        depth=depth, 
-        use_pos=False,
-        rpe_layers=6,
-        **kwargs
-    )
-    model.default_cfg = _cfg()
-
-    return model
-##### rpe layer test
-########## Deit tiny
+########## Pyramid tiny
