@@ -29,7 +29,7 @@ import utils.utils
 from models import *
 
 def get_args_parser():
-    parser = argparse.ArgumentParser('Trev_cv training and evaluation script', add_help=False)
+    parser = argparse.ArgumentParser('Im training and evaluation script', add_help=False)
     parser.add_argument('--fp32-resume', action='store_true', default=False)
     parser.add_argument('--batch-size', default=80, type=int)
     parser.add_argument('--epochs', default=300, type=int)
@@ -235,6 +235,9 @@ def main(args):
         args.model,
         pretrained=False,
         num_classes=args.nb_classes,
+	    drop_rate=args.drop,
+        drop_path_rate=args.drop_path,
+        drop_block_rate=None,
     )
     print(model)
 

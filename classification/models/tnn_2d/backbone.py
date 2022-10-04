@@ -3,7 +3,7 @@ from torch import nn
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from einops import rearrange
 
-from .utils import GLU, SimpleRMSNorm
+from models.helpers import GLU, SimpleRMSNorm
 from .gtu_2d import Gtu2d
 
 class Block(nn.Module):

@@ -8,7 +8,7 @@ from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
 import math
 
-from .utils import GLU, SimpleRMSNorm
+from models.helpers import GLU, SimpleRMSNorm
 from .gtu_2d import Gtu2d
 from .backbone import Block, DownSample
 

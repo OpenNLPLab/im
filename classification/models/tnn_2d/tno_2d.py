@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from einops import rearrange, repeat
-from .utils import SimpleRMSNorm
+from models.helpers import SimpleRMSNorm
 
 class Rpe2d(nn.Module):
     def __init__(self, dim, outdim, residual, act="relu", bias=True, layers=3):
