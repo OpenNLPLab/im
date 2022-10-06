@@ -10,6 +10,7 @@ from timm.models.vision_transformer import _cfg
 
 from models.helpers import SimpleRMSNorm
 from models.helpers import Urpe
+from models.helpers import GLU
 from models.helpers import get_activation_fn, get_norm
 
 def pair(t):
@@ -20,6 +21,7 @@ class PreNorm(nn.Module):
         super().__init__()
         self.norm = get_norm(norm_type, dim)
         self.fn = fn
+        
     def forward(self, x, **kwargs):
         return self.fn(self.norm(x), **kwargs)
 
@@ -33,6 +35,7 @@ class FeedForward(nn.Module):
             nn.Linear(hidden_dim, dim),
             nn.Dropout(dropout)
         )
+        
     def forward(self, x):
         return self.net(x)
 
@@ -203,7 +206,7 @@ class Transnormer(nn.Module):
         heads, 
         dim_head, 
         mlp_dim, 
-        dropout = 0., 
+        dropout=0., 
         r=7, 
         use_urpe=False, 
         # add
@@ -213,6 +216,10 @@ class Transnormer(nn.Module):
         block_act="relu",
         block_size=4,
         linear_act="1+elu",
+        # glu
+        use_glu=False,
+        glu_act="silu",
+        glu_dim=-1,
     ):
         super().__init__()
         assert len(type_list) == depth
@@ -232,9 +239,13 @@ class Transnormer(nn.Module):
                 r=r,
                 use_urpe=use_urpe,
             )
+            if use_glu:
+                FFN = GLU(dim, glu_dim, glu_act)
+            else:
+                FFN = FeedForward(dim, mlp_dim, dropout=dropout)
             self.layers.append(nn.ModuleList([
                     PreNorm(dim, Attention, norm_type),
-                    PreNorm(dim, FeedForward(dim, mlp_dim, dropout = dropout), norm_type)
+                    PreNorm(dim, FFN, norm_type)
             ]))
     
     def get_attention(
@@ -302,6 +313,10 @@ class NormViT(nn.Module):
         block_size=4,
         linear_act="1+elu",
         use_abs=True,
+        # glu
+        use_glu=False,
+        glu_act="silu",
+        glu_dim=-1,
     ):
         super().__init__()
         image_height, image_width = pair(image_size)
@@ -340,6 +355,9 @@ class NormViT(nn.Module):
             block_act=block_act,
             block_size=block_size,
             linear_act=linear_act,
+            use_glu=use_glu,
+            glu_act=glu_act,
+            glu_dim=glu_dim,
         )
 
         self.pool = pool
@@ -508,8 +526,93 @@ def norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm_no_urpe(pretrained=False, **k
     )
     model.default_cfg = _cfg()
     return model
-
 ##### no urpe
+
+##### glu
+@register_model
+def norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm_glu(pretrained=False, **kwargs):
+    patch_size = 16
+    dim = 192
+    depth = 12
+    heads = 6
+    mlp_dim = 4 * dim
+    dropout = 0.0
+    r = 224 // patch_size
+    use_urpe = True
+    type_list = [1 for i in range(depth // 2)] + [2 for i in range(depth // 2)]
+    norm_type = "simplermsnorm"
+    use_softmax = True
+    block_act = "relu"
+    block_size = 4
+    linear_act = "1+elu"
+    # glu
+    use_glu = True
+    glu_act = "swish"
+    glu_dim = (8 * dim // 3)
+    model = NormViT(
+        patch_size=patch_size, 
+        dim=dim, 
+        depth=depth, 
+        heads=heads, 
+        mlp_dim=mlp_dim,
+        r=r,
+        use_urpe=use_urpe,
+        type_list=type_list,
+        use_softmax=use_softmax,
+        block_act=block_act,
+        block_size=block_size,
+        linear_act=linear_act,
+        norm_type=norm_type,
+        use_glu=use_glu,
+        glu_act=glu_act,
+        glu_dim=glu_dim,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+    return model
+
+@register_model
+def norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm_glu(pretrained=False, **kwargs):
+    patch_size = 16
+    dim = 192
+    depth = 12
+    heads = 6
+    mlp_dim = 4 * dim
+    dropout = 0.0
+    r = 224 // patch_size
+    use_urpe = True
+    type_list = [1 for i in range(depth // 2)] + [2 for i in range(depth // 2)]
+    norm_type = "simplermsnorm"
+    use_softmax = False
+    block_act = "relu"
+    block_size = 4
+    linear_act = "elu"
+    # glu
+    use_glu = True
+    glu_act = "swish"
+    glu_dim = (8 * dim // 3)
+    model = NormViT(
+        patch_size=patch_size, 
+        dim=dim, 
+        depth=depth, 
+        heads=heads, 
+        mlp_dim=mlp_dim,
+        r=r,
+        use_urpe=use_urpe,
+        type_list=type_list,
+        use_softmax=use_softmax,
+        block_act=block_act,
+        block_size=block_size,
+        linear_act=linear_act,
+        norm_type=norm_type,
+        use_glu=use_glu,
+        glu_act=glu_act,
+        glu_dim=glu_dim,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+    return model
+##### glu
 ########## Deit tiny
 
 # to do: mask padding部分
