@@ -42,6 +42,7 @@ class TNN2DVit(nn.Module):
         # pad
         drop_rate=0.,
         drop_path_rate=0.,
+        prenorm=False,
     ):
         super().__init__()
         self.num_classes = num_classes
@@ -81,6 +82,7 @@ class TNN2DVit(nn.Module):
                     gamma=gamma,
                     n=self.H,
                     m=self.W,
+                    prenorm=prenorm,
                 )
             )
 
@@ -292,4 +294,33 @@ def tnn_2d_vit_tiny_rpe_v8_l6(pretrained=False, **kwargs):
 
     return model
 ##### rpe layer test
+
+##### prenorm
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l1_prenorm(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    prenorm = True
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="silu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=1,
+        prenorm=prenorm,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+##### prenorm
 ########## Deit tiny

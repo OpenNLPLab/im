@@ -26,6 +26,7 @@ class Block(nn.Module):
         # n, m
         n=14,
         m=14,
+        prenorm=False,
     ):
         super().__init__()
         self.token_mixer = Gtu2d(
@@ -55,6 +56,12 @@ class Block(nn.Module):
         )
 
         self.apply(self._init_weights)
+        print(f"prenorm {prenorm}")
+        
+        if prenorm:
+            self.forward = self.forward_prenorm
+        else:
+            self.forward = self.forward_postnorm
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -71,9 +78,15 @@ class Block(nn.Module):
             if m.bias is not None:
                 m.bias.data.zero_()
 
-    def forward(self, x, H, W):
+    def forward_postnorm(self, x, H, W):
         x = x + self.drop_path(self.token_mixer(x, H, W))
         x = x + self.drop_path(self.norm(self.mlp(x)))
+
+        return x
+    
+    def forward_prenorm(self, x, H, W):
+        x = x + self.drop_path(self.token_mixer(x, H, W))
+        x = x + self.drop_path(self.mlp(self.norm(x)))
 
         return x
 
