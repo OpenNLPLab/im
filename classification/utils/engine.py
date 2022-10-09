@@ -62,8 +62,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: DistillationLoss,
         metric_logger.update(loss=loss_value)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
 
-        if dist:
-            torch.distributed.barrier()
+        # if dist:
+        #     torch.distributed.barrier()
 
         if test:
             break
