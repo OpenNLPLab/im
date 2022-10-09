@@ -158,6 +158,8 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
     
     parser.add_argument('--test', action='store_true', default=False)
+    
+    parser.add_argument('--broadcast_buffers', action='store_true', default=False)
 
     return parser
 
@@ -265,7 +267,7 @@ def main(args):
 
     model_without_ddp = model
     if args.distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], broadcast_buffers=args.broadcast_buffers)
         model_without_ddp = model.module
     else:
         model = torch.nn.DataParallel(model)

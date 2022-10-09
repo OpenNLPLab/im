@@ -15,7 +15,8 @@ DATA=../pvc/data
 # for ARCH in norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm
 # for ARCH in tnn_2d_pyr_tiny_rpe_v8_l1 tnn_2d_vit_tiny_rpe_v8_l1 norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm_no_urpe norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm_no_urpe
 # for ARCH in norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm_glu norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm_glu
-for ARCH in tnn_2d_vit_tiny_rpe_v8_l1_prenorm tnn_2d_vit_tiny_rpe_v8_l1
+# for ARCH in tnn_2d_vit_tiny_rpe_v8_l1_prenorm tnn_2d_vit_tiny_rpe_v8_l1
+for ARCH in tnn_2d_vit_tiny_rpe_v8_l1_prenorm
 do
     CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=$GPUS --master_port=$PORT \
         --use_env $PROG --data-set CIFAR --batch-size $batch_size --num_workers 1 --lr 3e-3 \
@@ -23,6 +24,7 @@ do
         --model $ARCH \
         --fp32-resume \
         --test \
+        --broadcast_buffers \
         2>&1 | tee log/${ARCH}.log
 done
 
