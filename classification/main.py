@@ -11,6 +11,8 @@ import json
 import warnings
 warnings.filterwarnings("ignore")
 
+import utils.utils
+
 from pathlib import Path
 from timm.data import Mixup
 from timm.models import create_model
@@ -25,7 +27,6 @@ from utils.engine import train_one_epoch, evaluate
 from utils.losses import DistillationLoss
 from utils.samplers import RASampler
 
-import utils.utils
 from models import *
 
 def get_args_parser():

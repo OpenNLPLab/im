@@ -11,10 +11,8 @@ from timm.models.vision_transformer import _cfg
 from models.helpers import SimpleRMSNorm
 from models.helpers import Urpe
 from models.helpers import GLU
-from models.helpers import get_activation_fn, get_norm
-
-def pair(t):
-    return t if isinstance(t, tuple) else (t, t)
+from models.helpers import FFN
+from models.helpers import get_activation_fn, get_norm, pair
 
 class PreNorm(nn.Module):
     def __init__(self, dim, fn, norm_type):
@@ -25,179 +23,7 @@ class PreNorm(nn.Module):
     def forward(self, x, **kwargs):
         return self.fn(self.norm(x), **kwargs)
 
-class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim, dropout = 0.):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(dim, hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, dim),
-            nn.Dropout(dropout)
-        )
-        
-    def forward(self, x):
-        return self.net(x)
-
-#### no cls
-class BlockAttention(nn.Module):
-    def __init__(
-        self, 
-        dim, 
-        heads=8, 
-        dim_head=64, 
-        dropout=0., 
-        r=7, # 每行的patch数量
-        use_urpe=False,
-        use_softmax=True,
-        norm_type="layernorm",
-        block_size=4,
-        act_fun="relu",
-    ):
-        super().__init__()
-        inner_dim = dim_head *  heads
-        project_out = not (heads == 1 and dim_head == dim)
-
-        self.heads = heads
-        self.scale = dim_head ** -0.5
-
-        self.atten = nn.Softmax(dim = -1)
-        self.dropout = nn.Dropout(dropout)
-        self.r = r
-
-        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
-
-        self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, dim),
-            nn.Dropout(dropout)
-        ) if project_out else nn.Identity()
-
-        self.use_urpe = use_urpe
-        print(f"self.use_urpe {self.use_urpe}")
-        if self.use_urpe:
-            self.urpe = Urpe(core_matrix=1, p_matrix=3, embedding_dim=dim_head, theta_learned=True, dims=[2, 3])
-        self.use_softmax = use_softmax
-        print(f"self.use_softmax {self.use_softmax}")
-        if not self.use_softmax:
-            self.norm = get_norm(norm_type, inner_dim)
-        self.block_size = block_size
-        print(f"self.block_size {self.block_size}")
-        print(f"act_fun {act_fun}")
-        self.act_fun = get_activation_fn(act_fun)
-
-    def transform(self, x, r, c):
-        # reshape
-        x = rearrange(x, 'b h (r c) d -> b h r c d', r=self.r)
-        # pad
-        r_pad = (self.block_size - r % self.block_size) % self.block_size
-        c_pad = (self.block_size - c % self.block_size) % self.block_size
-        x = F.pad(x, (0, 0, 0, r_pad, 0, c_pad, 0, 0, 0, 0))
-        # reshape
-        x = rearrange(x, 'b h (n g) (m e) d -> b h n g m e d', g=self.block_size, e=self.block_size)
-        x = rearrange(x, 'b h n g m e d -> b h n m (g e) d')
-
-        return x
-
-    def reverse_transform(self, x, r, c):
-        x = rearrange(x, 'b h n m (g e) d -> b h n g m e d', g=self.block_size, e=self.block_size)
-        x = rearrange(x, 'b h n g m e d -> b h (n g) (m e) d')
-        # remove pad
-        x = x[:, :, :r, :c, :]
-        x = rearrange(x, 'b h r c d -> b h (r c) d')
-
-        return x
-
-    def forward(self, x):
-        qkv = self.to_qkv(x).chunk(3, dim = -1)
-        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
-        if self.use_urpe:
-            q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.r)
-            k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.r)
-            q = self.urpe(q)
-            k = self.urpe(k)
-            q = rearrange(q, 'b h r c d -> b h (r c) d')
-            k = rearrange(k, 'b h r c d -> b h (r c) d')
-
-        r = self.r
-        c = q.shape[-2] // r
-        # chunk
-        # b h n m (g g) d
-        q = self.transform(q, r, c)
-        k = self.transform(k, r, c)
-        v = self.transform(v, r, c)
-        
-        dots = torch.einsum('...nd,...md->...nm', q, k) * self.scale
-        if self.use_softmax:
-            attn = self.atten(dots)
-        else:
-            attn = self.act_fun(dots)
-        attn = self.dropout(attn)
-
-        out = torch.einsum("...ls,...sd->...ld", attn, v)
-        out = self.reverse_transform(out, r, c)
-        out = rearrange(out, 'b h n d -> b n (h d)')
-        if not self.use_softmax:
-            out = self.norm(out)
-        return self.to_out(out)
-
-#### no cls
-class NormLinearAttention(nn.Module):
-    def __init__(
-        self, 
-        dim, 
-        heads=8, 
-        dim_head=64, 
-        dropout=0., 
-        r=7, # 每行的patch数量
-        use_urpe=False,
-        norm_type="layernorm",
-        act_fun="relu",
-    ):
-        super().__init__()
-        inner_dim = dim_head *  heads
-        project_out = not (heads == 1 and dim_head == dim)
-
-        self.heads = heads
-        self.scale = dim_head ** -0.5
-
-        self.dropout = nn.Dropout(dropout)
-        self.r = r
-
-        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
-
-        self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, dim),
-            nn.Dropout(dropout)
-        ) if project_out else nn.Identity()
-
-        self.use_urpe = use_urpe
-        print(f"self.use_urpe {self.use_urpe}")
-        if self.use_urpe:
-            self.urpe = Urpe(core_matrix=1, p_matrix=3, embedding_dim=dim_head, theta_learned=True, dims=[2, 3])
-        self.norm = get_norm(norm_type, inner_dim)
-        print(f"act_fun {act_fun}")
-        self.act_fun = get_activation_fn(act_fun)
-
-    def forward(self, x):
-        qkv = self.to_qkv(x).chunk(3, dim = -1)
-        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
-        q = self.act_fun(q)
-        k = self.act_fun(k)
-        if self.use_urpe:
-            q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.r)
-            k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.r)
-            q = self.urpe(q)
-            k = self.urpe(k)
-            q = rearrange(q, 'b h r c d -> b h (r c) d')
-            k = rearrange(k, 'b h r c d -> b h (r c) d')
-
-        kv = torch.einsum('...nm,...nd->...md', k, v)
-        qkv = torch.einsum('...nm,...md->...nd', q, kv)
-        out = rearrange(qkv, 'b h n d -> b n (h d)')
-        out = self.norm(out)
-
-        return self.to_out(out)
-
+##### no cls
 class Transnormer(nn.Module):
     def __init__(
         self, 
@@ -265,7 +91,7 @@ class Transnormer(nn.Module):
     ):
         if type_index == 1:
             print("block")
-            return BlockAttention(
+            return DiagBlockAttention(
                 dim=dim,
                 heads=heads,
                 dim_head=dim_head,
@@ -296,12 +122,21 @@ class Transnormer(nn.Module):
             x = ff(x) + x
         return x
 
-#### no cls
+##### no cls
 class NormViT(nn.Module):
     def __init__(
-        self, *, image_size=224, patch_size, num_classes, dim, depth, heads, mlp_dim, 
-        pool='cls', channels=3, drop_rate=0., 
-        emb_dropout = 0., drop_path_rate=0.,
+        self, *, 
+        image_size=224, 
+        patch_size, 
+        num_classes, 
+        dim, depth, 
+        heads, 
+        mlp_dim, 
+        pool='cls', 
+        channels=3, 
+        drop_rate=0., 
+        emb_dropout = 0., 
+        drop_path_rate=0.,
         # add
         r=7, 
         use_urpe=False, 

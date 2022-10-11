@@ -1,18 +1,21 @@
 import torch
+import math
+
 from torch import nn
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
-
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
-import math
 
-from models.helpers import GLU, SimpleRMSNorm, pair
-from .gtu_2d import Gtu2d
+from models.helpers import pair
+from models.helpers import GLU
+from models.helpers import SimpleRMSNorm
+
+from .tno import Tno
 from .backbone import Block
 
-class TNN2DVit(nn.Module):
+class TNNVit(nn.Module):
     def __init__(
         self, 
         img_size=224, 
@@ -20,7 +23,7 @@ class TNN2DVit(nn.Module):
         in_chans=3, 
         num_classes=1000, 
         embed_dim=384,
-        rpe_embedding=96,
+        rpe_embdding=96,
         num_heads=6,
         rpe_act="relu",
         glu_act="silu",
@@ -66,7 +69,7 @@ class TNN2DVit(nn.Module):
                 Block(
                     dim=embed_dim, 
                     num_heads=num_heads, 
-                    rpe_embedding=rpe_embedding, 
+                    rpe_embedding=rpe_embdding, 
                     rpe_act=rpe_act,
                     glu_dim=glu_dim,
                     glu_act=glu_act,
@@ -75,8 +78,6 @@ class TNN2DVit(nn.Module):
                     use_decay=use_decay,
                     use_multi_decay=use_multi_decay,
                     gamma=gamma,
-                    n=self.H,
-                    m=self.W,
                     prenorm=prenorm,
                 )
             )
@@ -86,21 +87,6 @@ class TNN2DVit(nn.Module):
             SimpleRMSNorm(embed_dim),
             nn.Linear(embed_dim, num_classes)
         )
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
 
     def freeze_patch_emb(self):
         self.patch_embed1.requires_grad = False
@@ -122,6 +108,7 @@ class TNN2DVit(nn.Module):
         
         if self.use_pos:
             x += self.pos_embedding
+            
         x = self.dropout(x)
 
         for i, block in enumerate(self.layers):

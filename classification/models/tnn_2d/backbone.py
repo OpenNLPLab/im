@@ -17,7 +17,6 @@ class Block(nn.Module):
         glu_act,
         drop_path=0., 
         expand_ratio=3,
-        shrink_ratio=1,
         # rpe
         use_decay=False,
         use_multi_decay=False,
@@ -33,9 +32,8 @@ class Block(nn.Module):
             embed_dim=dim,
             num_heads=num_heads,
             rpe_embedding=rpe_embedding,
-            rpe_act="silu",
+            rpe_act="relu",
             expand_ratio=expand_ratio,
-            shrink_ratio=shrink_ratio,
             # rpe
             rpe_layers=rpe_layers,
             use_decay=use_decay,
@@ -49,7 +47,7 @@ class Block(nn.Module):
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         # v2 add
         self.norm = SimpleRMSNorm(dim)
-        self.mlp = GLU(
+        self.feature_mixer = GLU(
             d1=dim, 
             d2=glu_dim,
             act_fun=glu_act,
@@ -80,13 +78,13 @@ class Block(nn.Module):
 
     def forward_postnorm(self, x, H, W):
         x = x + self.drop_path(self.token_mixer(x, H, W))
-        x = x + self.drop_path(self.norm(self.mlp(x)))
+        x = x + self.drop_path(self.norm(self.feature_mixer(x)))
 
         return x
     
     def forward_prenorm(self, x, H, W):
         x = x + self.drop_path(self.token_mixer(x, H, W))
-        x = x + self.drop_path(self.mlp(self.norm(x)))
+        x = x + self.drop_path(self.feature_mixer(self.norm(x)))
 
         return x
 

@@ -26,9 +26,12 @@ def get_activation_fn(activation):
         return F.silu
     else:
         return lambda x: x
-
+    
 def get_norm(norm_type, embed_dim):
     if norm_type == "simplermsnorm":
         return SimpleRMSNorm(embed_dim)
     else:
         return nn.LayerNorm(embed_dim)
+
+def pair(t):
+    return t if isinstance(t, tuple) else (t, t)

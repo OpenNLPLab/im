@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import numpy as np
 from einops import rearrange, repeat
 from models.helpers import SimpleRMSNorm
+from models.helpers import get_activation_fn
 
 class Rpe2d(nn.Module):
     def __init__(self, dim, outdim, residual, act="relu", bias=True, layers=3):
@@ -98,40 +99,7 @@ class Tno2D(nn.Module):
 
         self.rpe = Rpe2d(dim=rpe_dim, outdim=self.h * self.dim, residual=residual, bias=bias, layers=layers)  
         self.act_type = act_type
-        self.act_fun = self.get_act_fun(self.act_type)
-
-    def get_act_fun(self, act_fun):
-        # print(act_fun)
-        if act_fun == "gelu":
-            return F.gelu
-        elif act_fun == "relu":
-            return F.relu
-        elif act_fun == "elu":
-            return F.elu
-        elif act_fun == "sigmoid":
-            return torch.sigmoid
-        elif act_fun == "exp":
-            return torch.exp
-        elif act_fun == "leak":
-            def f(x):
-                return F.leaky_relu(x)
-            return f
-        elif act_fun == "1+elu":
-            def f(x):
-                return 1 + F.elu(x)
-            return f
-        elif act_fun == "silu":
-            return F.silu
-        elif act_fun == "relu2":
-            def f(x):
-                return torch.square(torch.relu(x))
-            return f
-        elif act_fun == "cos":
-            return torch.cos
-        elif act_fun == "sin":
-            return torch.sin
-        else:
-            return lambda x: x
+        self.act_fun = get_activation_fn(self.act_type)
 
     def get_arr(self, n):
         # 0, 1, ..., (n - 1), -(n - 1), ..., -1
@@ -188,40 +156,19 @@ class Tno2D(nn.Module):
                 gamma = torch.sigmoid(self.gamma)
                 gamma = self.lambda_ + (1 - self.lambda_) * gamma
             tmp = self.index_row + self.index_col
-            print(tmp.shape)
-            print(tmp[:, :, 0])
             gamma = gamma ** (self.index_row + self.index_col)
             coef = coef * gamma
-            # if self.use_multi_decay:
-            #     print(gamma[0, :, :, 0])
-            # else:
-            #     print(gamma[:, :, 0])
-        # tmp = self.index_row + self.index_col
-        # print(tmp.shape)
 
         # coef: 1, h, (2n - 1), (2m - 1), d
         # x: ..., h, n, m, d
-        # print(coef[0, 0, :, :, 0])
-        # print(coef.shape, x.shape)
-        # # print(2 * n - 1, 2 * m - 1)
-        # n1 = next_fast_len(2 * n - 1)
-        # m1 = next_fast_len(2 * m - 1)
         n1 = 2 * n - 1
         m1 = 2 * m - 1
-        # print(n1, m1)
         coef_fft = torch.fft.rfft2(coef, s=(n1, m1), dim=(-3, -2))
         x_fft = torch.fft.rfft2(x, s=(n1, m1), dim=(-3, -2))
-        # print(coef_fft.shape, x_fft.shape)
         output_fft = coef_fft * x_fft
-        # print(torch.fft.irfft2(output_fft, s=(n1, m1), dim=(-3, -2)).shape)
         output = torch.fft.irfft2(output_fft, s=(n1, m1), dim=(-3, -2))[:, :, :n, :m]
 
         return output
-        ##### for test
-        # matrix = self.toeplizt_matrix(n)
-        # res = torch.einsum('...nme,...me->...ne', matrix, x)
-        # # print(torch.norm(res - output))
-        ##### for test
 
     def block_toeplizt_matrix(self, x):
         # shape of x: b, h, n, m, d
@@ -250,16 +197,10 @@ class Tno2D(nn.Module):
                 s1 = i * m
                 s2 = j * m
                 # h, 2m - 1, d
-                # # print("coef")
-                # # print(T.shape)
-                # # print(coef.shape)
                 # col, row
                 vals = coef[:, i - j, :, :]
-                # # print(vals.shape)
                 s, t = torch.ones(m, m).nonzero().T
-                # # print(vals[:, t - s].reshape(self.h, m, m, -1).shape)
                 T0[:, s1: s1 + m, s2: s2 + m, :] = vals[:, s - t].reshape(self.h, m, m, -1)
-        # print(T0[0, :, :, 0])
         
         if self.use_decay or self.use_multi_decay:
             if self.use_decay:
@@ -277,18 +218,10 @@ class Tno2D(nn.Module):
                 s1 = i * m
                 s2 = j * m
                 # h, 2m - 1, d
-                # # print("coef")
-                # # print(T.shape)
-                # # print(coef.shape)
                 # col, row
                 vals = coef[:, i - j, :, :]
-                # # print(vals.shape)
                 s, t = torch.ones(m, m).nonzero().T
-                # # print(vals[:, t - s].reshape(self.h, m, m, -1).shape)
                 T[:, s1: s1 + m, s2: s2 + m, :] = vals[:, s - t].reshape(self.h, m, m, -1)
-        # print(T.shape)
-        # print(T[0, :, :, 0])
-        # print(T[0, :, :, 0] / T0[0, :, :, 0])
 
         x = rearrange(x, 'b h n m d -> b h (n m) d')
         res = torch.einsum('h n m d, b h m d -> b h n d', T, x)

@@ -8,12 +8,9 @@ from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
 import math
 
-from models.helpers import GLU, SimpleRMSNorm
+from models.helpers import GLU, SimpleRMSNorm, pair
 from .gtu_2d import Gtu2d
 from .backbone import Block, DownSample
-
-def pair(t):
-    return t if isinstance(t, tuple) else (t, t)
 
 class BlockStage(nn.Module):
     def __init__(
@@ -26,7 +23,6 @@ class BlockStage(nn.Module):
         glu_dim,
         glu_act,
         expand_ratio,
-        shrink_ratio,
         rpe_layers,
         use_decay,
         use_multi_decay,
@@ -49,7 +45,6 @@ class BlockStage(nn.Module):
                     glu_dim=glu_dim,
                     glu_act=glu_act,
                     expand_ratio=expand_ratio,
-                    shrink_ratio=shrink_ratio,
                     rpe_layers=rpe_layers,
                     use_decay=use_decay,
                     use_multi_decay=use_multi_decay,
@@ -83,12 +78,11 @@ class TNN2DPyr(nn.Module):
         embed_dim=96,
         rpe_embedding=96,
         num_heads=6,
-        rpe_act="silu",
+        rpe_act="relu",
         glu_act="silu",
         glu_dim=576,
         depths=[2, 2, 6, 2],
         expand_ratio=3,
-        shrink_ratio=1,
         channels=3,
         emb_dropout=0,
         use_pos=True,
@@ -135,7 +129,6 @@ class TNN2DPyr(nn.Module):
                 glu_dim=glu_dim,
                 glu_act=glu_act,
                 expand_ratio=expand_ratio,
-                shrink_ratio=shrink_ratio,
                 rpe_layers=rpe_layers,
                 use_decay=use_decay,
                 use_multi_decay=use_multi_decay,
@@ -206,31 +199,3 @@ class TNN2DPyr(nn.Module):
         x = self.head(x)
 
         return x
-
-########## Pyramid tiny
-@register_model
-def tnn_2d_pyr_tiny_rpe_v8_l1(pretrained=False, **kwargs):
-    patch_size = 4
-    dim = 48
-    glu_dim = dim
-    rpe_dim = 32
-    num_heads = 1
-    depth = 12
-    model = TNN2DPyr(
-        patch_size=patch_size, 
-        embed_dim=dim, 
-        num_heads=num_heads, 
-        rpe_embedding=rpe_dim,
-        rpe_act="silu",
-        glu_act="silu",
-        glu_dim=glu_dim,
-        expand_ratio=3,
-        depths=[2, 2, 6, 2], 
-        use_pos=False,
-        rpe_layers=1,
-        **kwargs
-    )
-    model.default_cfg = _cfg()
-
-    return model
-########## Pyramid tiny

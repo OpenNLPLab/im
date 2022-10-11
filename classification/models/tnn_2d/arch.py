@@ -1,0 +1,220 @@
+# Network architecture under test
+from timm.models.registry import register_model
+from timm.models.vision_transformer import _cfg
+from .model_vit import *
+from .model_pyr import *
+
+############### model_vit
+########## Deit tiny
+##### rpe layer test
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l1(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=1,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l2(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=2,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l3(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=3,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l4(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=4,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l5(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=5,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l6(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=6,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+##### rpe layer test
+
+##### prenorm
+@register_model
+def tnn_2d_vit_tiny_rpe_v8_l1_prenorm(pretrained=False, **kwargs):
+    dim = 192
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    prenorm = True
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=1,
+        prenorm=prenorm,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+##### prenorm
+########## Deit tiny
+############### model_vit
+
+############### model_pyr
+########## Pyramid tiny
+@register_model
+def tnn_2d_pyr_tiny_rpe_v8_l1(pretrained=False, **kwargs):
+    patch_size = 4
+    dim = 48
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    model = TNN2DPyr(
+        patch_size=patch_size, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depths=[2, 2, 6, 2], 
+        use_pos=False,
+        rpe_layers=1,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+########## Pyramid tiny
+############### model_pyr
