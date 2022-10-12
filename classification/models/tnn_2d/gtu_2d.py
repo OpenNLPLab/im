@@ -1,15 +1,18 @@
 import math
 import numpy as np
-from typing import Dict, Optional, Tuple
-
 import torch
 import torch.nn.functional as F
+import sys
+
 from torch import Tensor, nn
 from torch.nn import Parameter
 from torch.nn import Dropout
-import sys
-from .tno_2d import SimpleRMSNorm, Tno2D
+from typing import Dict, Optional, Tuple
 from einops import rearrange
+
+from models.helpers import get_activation_fn, get_norm_fun
+
+from .tno_2d import SimpleRMSNorm, Tno2D
 
 class Gtu2d(nn.Module):
     def __init__(
@@ -41,8 +44,6 @@ class Gtu2d(nn.Module):
         gamma=0.999,
         n=14,
         m=14,
-        # token shift
-        token_shift_type=-1,
     ):
         # add
         self.index = index
@@ -71,7 +72,7 @@ class Gtu2d(nn.Module):
         self.o = nn.Linear(d1, embed_dim, bias=bias)
 
         self.causal = causal
-        self.act = self.get_act_fun(act_fun)
+        self.act = get_activation_fn(act_fun)
         print(f"act_fun {act_fun}")
         print(f"causal {self.causal}")
         
@@ -126,21 +127,13 @@ class Gtu2d(nn.Module):
         
         # norm
         self.norm_type = norm_type
-        self.pre_norm = self.get_norm_fun(self.norm_type, d2)
+        self.pre_norm = get_norm_fun(self.norm_type, d2)
         
         self.use_norm = use_norm
         if self.use_norm:
-            self.norm = self.get_norm_fun(norm_type, d1)
+            self.norm = get_norm_fun(norm_type, d1)
         print(f"use_norm {self.use_norm}")
         print(f"norm_type {self.norm_type}")
-        
-        self.token_shift_type = token_shift_type
-        print(f"self.token_shift_type {self.token_shift_type}")
-        if self.token_shift_type == 1:
-            self.token_shift = nn.ZeroPad2d((0, 0, 1, -1))
-        elif self.token_shift_type == 2:
-            self.token_shift = nn.ZeroPad2d((0, 0, 1, -1))
-            self.coef = 0.5
 
         # self.par_init()
         
@@ -152,61 +145,9 @@ class Gtu2d(nn.Module):
         nn.init.normal_(self.o.weight, std=0.02)
         nn.init.normal_(self.o.bias, std=0.02)
 
-    def get_norm_fun(self, norm_type, embed_dim):
-        if norm_type == "rmsnorm":
-            print("here! rmsnorm")
-            return RMSNorm(embed_dim)
-        elif norm_type == "gatedrmsnorm":
-            print("here! gatedrmsnorm")
-            return GatedRMSNorm(embed_dim)
-        elif norm_type == "simplermsnorm":
-            print("here! simple rmsnorm")
-            return SimpleRMSNorm(embed_dim)
-        elif norm_type == "scalenorm":
-            print("here! scale norm")
-            return ScaleNorm(embed_dim)
-        else:
-            print("here! layer norm")
-            return nn.LayerNorm(embed_dim)
-
-    def get_act_fun(self, act_fun):
-        print(act_fun)
-        if act_fun == "gelu":
-            return F.gelu
-        elif act_fun == "relu":
-            return F.relu
-        elif act_fun == "elu":
-            return F.elu
-        elif act_fun == "sigmoid":
-            return torch.sigmoid
-        elif act_fun == "exp":
-            return torch.exp
-        elif act_fun == "leak":
-            def f(x):
-                return F.leaky_relu(x, negative_slope=self.negative_slope)
-            return f
-        elif act_fun == "1+elu":
-            def f(x):
-                return 1 + F.elu(x)
-            return f
-        elif act_fun == "silu":
-            return F.silu
-        elif self.act_fun == "relu2":
-            def f(x):
-                return torch.square(torch.relu(x))
-            return f
-        else:
-            return lambda x: x
-
     def forward(self, x, H, W):
         # x: b, h * w, d
         num_heads = self.num_heads
-        
-        if self.token_shift_type == 1:
-            x = self.token_shift(x)
-        elif self.token_shift_type == 2:
-            q1 = self.token_shift(x)
-            x = self.coef * q1 + (1 - self.coef) * x
 
         shortcut, x = x, self.pre_norm(x)
         if self.resi_param:

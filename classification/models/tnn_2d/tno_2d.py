@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+
 from einops import rearrange, repeat
 from models.helpers import SimpleRMSNorm
 from models.helpers import get_activation_fn
@@ -228,3 +229,75 @@ class Tno2D(nn.Module):
         res = rearrange(res, 'b h (n m) d -> b h n m d', n=n)
 
         return res
+    
+class Tno2dPatchEmbedding(nn.Module):
+    def __init__(
+        self,
+        patch_size, 
+        patch_dim, 
+        embed_dim,
+        num_heads=1,
+        # Toeplitz
+        use_decay=False,
+        use_multi_decay=False,
+        rpe_embedding=512,
+        rpe_act="relu",
+        normalize=False,
+        par_type=1,
+        rpe_layers=3,
+        residual=False,
+        l=1, 
+        transform_type=1,
+        gamma=0.999,
+        n=224,
+        m=224,
+        c=3,
+    ):
+        super().__init__()
+        # toep
+        self.num_heads = 1
+        self.head_dim = c // self.num_heads
+        self.use_decay = use_decay
+        self.use_multi_decay = use_multi_decay
+        self.rpe_embedding = rpe_embedding
+        self.rpe_act = rpe_act
+        self.normalize = normalize
+        self.par_type = par_type
+        self.residual = residual
+        self.l = l
+        self.transform_type = transform_type
+        self.gamma = gamma
+        self.rpe_layers = rpe_layers
+        self.n = n
+        self.m = m
+        self.patch_height = patch_size
+        self.patch_width = patch_size
+        self.toep = Tno2D(
+            h=self.num_heads, 
+            n=self.n, 
+            m=self.m,
+            dim=self.head_dim,
+            rpe_dim=self.rpe_embedding, 
+            use_decay=self.use_decay, 
+            use_multi_decay=self.use_multi_decay,
+            act=self.rpe_act,
+            par_type=self.par_type,
+            residual=self.residual,
+            layers=self.rpe_layers,
+            l=self.l,
+            transform_type=self.transform_type,
+            gamma=self.gamma,
+        )
+
+        self.to_out = nn.Linear(patch_dim, embed_dim)
+        
+    def forward(self, x):
+        # x: b, d, n, m
+        x = rearrange(x, 'b (h d) n m -> b h n m d', h=self.num_heads)
+        x = self.toep(x)
+        x = rearrange(x, 'b h n m d -> b n m (h d)')
+        x = rearrange(x, 'b (h p1) (w p2) c -> b h w (p1 p2 c)', p1=self.patch_height, p2=self.patch_width)
+        x = self.to_out(x)
+        
+        return x
+        

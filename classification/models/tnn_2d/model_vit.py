@@ -11,6 +11,7 @@ import math
 from models.helpers import GLU, SimpleRMSNorm, pair
 from .gtu_2d import Gtu2d
 from .backbone import Block
+from .tno_2d import Tno2dPatchEmbedding
 
 class TNN2DVit(nn.Module):
     def __init__(
@@ -39,6 +40,7 @@ class TNN2DVit(nn.Module):
         drop_rate=0.,
         drop_path_rate=0.,
         prenorm=False,
+        use_tno_patch=False,
     ):
         super().__init__()
         self.num_classes = num_classes
@@ -51,10 +53,26 @@ class TNN2DVit(nn.Module):
         self.H = image_height // patch_height
         self.W = image_width // patch_width
 
-        self.to_patch_embedding = nn.Sequential(
-            Rearrange('b c (h p1) (w p2) -> b h w (p1 p2 c)', p1 = patch_height, p2 = patch_width),
-            nn.Linear(patch_dim, embed_dim),
-        )
+        if use_tno_patch:
+            self.to_patch_embedding = Tno2dPatchEmbedding(
+                patch_size=patch_size, 
+                patch_dim=patch_dim, 
+                embed_dim=embed_dim,
+                num_heads=1, 
+                rpe_embedding=rpe_embedding, 
+                rpe_act=rpe_act,
+                rpe_layers=rpe_layers,
+                use_decay=use_decay,
+                use_multi_decay=use_multi_decay,
+                gamma=gamma,
+                n=image_height,
+                m=image_width,
+            )
+        else:
+            self.to_patch_embedding = nn.Sequential(
+                Rearrange('b c (h p1) (w p2) -> b h w (p1 p2 c)', p1 = patch_height, p2 = patch_width),
+                nn.Linear(patch_dim, embed_dim),
+            )
         self.use_pos = use_pos
         if self.use_pos:
             self.pos_embedding = nn.Parameter(torch.randn(1, self.H, self.W, embed_dim))
@@ -86,6 +104,8 @@ class TNN2DVit(nn.Module):
             SimpleRMSNorm(embed_dim),
             nn.Linear(embed_dim, num_classes)
         )
+        
+        print(f"use_tno_patch {use_tno_patch}")
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
