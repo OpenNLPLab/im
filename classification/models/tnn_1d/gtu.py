@@ -133,7 +133,7 @@ class Gtu(nn.Module):
         print(f"use_norm {self.use_norm}")
         print(f"norm_type {self.norm_type}")
 
-        self.par_init()
+        # self.par_init()
         
     def par_init(self):
         nn.init.normal_(self.u_proj.weight, std=0.02)
