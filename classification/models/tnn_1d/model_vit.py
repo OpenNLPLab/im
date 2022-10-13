@@ -8,9 +8,7 @@ from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
 
-from models.helpers import pair
-from models.helpers import GLU
-from models.helpers import SimpleRMSNorm
+from models.helpers import GLU, SimpleRMSNorm, pair, print_params
 
 from .tno import Tno
 from .backbone import Block
@@ -44,6 +42,11 @@ class TNNVit(nn.Module):
         prenorm=False,
     ):
         super().__init__()
+        # get local varables
+        params = locals()
+        # print params
+        print_params(**params)
+        
         self.num_classes = num_classes
 
         image_height, image_width = pair(img_size)

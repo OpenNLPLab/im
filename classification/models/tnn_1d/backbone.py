@@ -45,8 +45,6 @@ class Block(nn.Module):
             act_fun=glu_act,
         )
         
-        print(f"prenorm {prenorm}")
-        
         if prenorm:
             self.forward = self.forward_prenorm
         else:

@@ -217,6 +217,7 @@ def tnn_2d_vit_tiny_rpe_v8_l1_prenorm_tno_patch(pretrained=False, **kwargs):
     return model
 ##### patch embedding test
 ########## Deit tiny
+
 ############### model_vit
 
 ############### model_pyr

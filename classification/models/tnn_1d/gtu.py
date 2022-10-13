@@ -47,8 +47,7 @@ class Gtu(nn.Module):
         
         self.expand_ratio = expand_ratio
         self.resi_param = resi_param
-        print(f"self.expand_ratio {self.expand_ratio}")
-        print(f"self.resi_param {self.resi_param}")
+        
         if self.resi_param:
             self.d = nn.Parameter(torch.randn(self.embed_dim))
 
@@ -65,8 +64,6 @@ class Gtu(nn.Module):
 
         self.causal = causal
         self.act = get_activation_fn(act_fun)
-        print(f"act_fun {act_fun}")
-        print(f"causal {self.causal}")
         
         # toep
         self.use_decay = use_decay
@@ -95,6 +92,7 @@ class Gtu(nn.Module):
             bias=self.bias,
             layers=rpe_layers,
         )
+        
         self.toep2 = Tno(
             h=self.num_heads,  
             dim=self.head_dim,
@@ -110,18 +108,6 @@ class Gtu(nn.Module):
             bias=self.bias,
             layers=rpe_layers,
         )
-
-        print(f"self.num_heads {self.num_heads}")
-        print(f"self.use_decay {self.use_decay}")
-        print(f"self.use_multi_decay {self.use_multi_decay}")
-        print(f"self.rpe_embedding {self.rpe_embedding}")
-        print(f"self.rpe_act {self.rpe_act}")
-        print(f"self.normalize {self.normalize}")
-        print(f"self.par_type {self.par_type}")
-        print(f"self.residual {self.residual}")
-        print(f"self.transform_type {self.transform_type}")
-        print(f"self.gamma {self.gamma}")
-        print(f"bias {bias}")
         
         # norm
         self.norm_type = norm_type
@@ -130,8 +116,6 @@ class Gtu(nn.Module):
         self.use_norm = use_norm
         if self.use_norm:
             self.norm = get_norm_fun(self.norm_type, d1)
-        print(f"use_norm {self.use_norm}")
-        print(f"norm_type {self.norm_type}")
 
         # self.par_init()
         
