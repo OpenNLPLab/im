@@ -45,16 +45,12 @@ class DiagBlockAttention(nn.Module):
         ) if project_out else nn.Identity()
 
         self.use_urpe = use_urpe
-        print(f"self.use_urpe {self.use_urpe}")
         if self.use_urpe:
             self.urpe = Urpe(core_matrix=1, p_matrix=3, embedding_dim=dim_head, theta_learned=True, dims=[2, 3])
         self.use_softmax = use_softmax
-        print(f"self.use_softmax {self.use_softmax}")
         if not self.use_softmax:
             self.norm = get_norm(norm_type, inner_dim)
         self.block_size = block_size
-        print(f"self.block_size {self.block_size}")
-        print(f"act_fun {act_fun}")
         self.act_fun = get_activation_fn(act_fun)
 
     def transform(self, x, r, c):
@@ -143,11 +139,9 @@ class NormLinearAttention(nn.Module):
         ) if project_out else nn.Identity()
 
         self.use_urpe = use_urpe
-        print(f"self.use_urpe {self.use_urpe}")
         if self.use_urpe:
             self.urpe = Urpe(core_matrix=1, p_matrix=3, embedding_dim=dim_head, theta_learned=True, dims=[2, 3])
         self.norm = get_norm(norm_type, inner_dim)
-        print(f"act_fun {act_fun}")
         self.act_fun = get_activation_fn(act_fun)
 
     def forward(self, x):
@@ -233,7 +227,6 @@ class Block(nn.Module):
         use_urpe,
     ):
         if type_index == 1:
-            print("diag block")
             return DiagBlockAttention(
                 dim=dim,
                 heads=heads,
@@ -247,7 +240,6 @@ class Block(nn.Module):
                 act_fun=block_act,
             )
         else:
-            print("norm linear")
             return NormLinearAttention(
                 dim=dim,
                 heads=heads,

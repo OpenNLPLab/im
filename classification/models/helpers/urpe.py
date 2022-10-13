@@ -5,12 +5,20 @@ import torch
 import torch.nn as nn
 import torch.functional as F
 import numpy as np
+import logging
+
+from .helpers import print_params
 
 class Urpe(nn.Module):
     def __init__(self, core_matrix, p_matrix, max_positions=512, embedding_dim=768, 
                  theta_type="a", theta_learned=False, householder_learned=False,
                  dims=[1]):
         super().__init__()
+        # get local varables
+        params = locals()
+        # logging.info params
+        print_params(**params)
+        
         self.core_matrix = core_matrix
         self.p_matrix = p_matrix
         self.theta_type = theta_type
@@ -20,46 +28,38 @@ class Urpe(nn.Module):
 
         if self.core_matrix == 1:
             if self.theta_learned:
-                print("learn theta!")
                 self.theta = nn.Parameter(10000 ** (-2 / embedding_dim * torch.arange(embedding_dim // 2)))
-            else:
-                print(f"theta_type {self.theta_type}")
-            print("rope")
+            logging.info("rope")
         elif self.core_matrix == 2:
-            print("mixed")
+            logging.info("mixed")
         elif self.core_matrix == 3:
-            print("permutation")
+            logging.info("permutation")
             permutation = self.get_permutation(max_positions, embedding_dim)
-            print(permutation.shape)
+            logging.info(permutation.shape)
             self.register_buffer("permutation", permutation)
         elif self.core_matrix == 4:
             if self.theta_learned:
-                print("learn theta!")
                 self.theta = nn.Parameter(10000 ** (-2 / embedding_dim * torch.arange(embedding_dim)))
-            else:
-                print(f"theta_type {self.theta_type}")
-            print("complex exp")
+            logging.info("complex exp")
 
         if self.p_matrix == 1:
-            print("Identity")
+            logging.info("Identity")
         elif self.p_matrix == 2:
-            print("DCT")
+            logging.info("DCT")
         elif self.p_matrix == 3:
-            print("Householder")
+            logging.info("Householder")
             if self.householder_learned:
-                print("learn householder!")
+                logging.info("learn householder!")
                 self.v = nn.Parameter(torch.randn(embedding_dim))
             else:
                 v = torch.randn(embedding_dim)
                 v = v / torch.norm(v)
-                print(f"house holder norm is {torch.norm(v)}")
+                logging.info(f"house holder norm is {torch.norm(v)}")
                 self.v = nn.Parameter(v, requires_grad=False)
         elif self.p_matrix == 4:
-            print("Fourier")
+            logging.info("Fourier")
         elif self.p_matrix == 5:
-            print("odd_even")
-
-        print(f"self.dims {self.dims}")
+            logging.info("odd_even")
 
         self.p = self.get_p()
         self.core_transform = self.get_core_transform()
@@ -160,10 +160,7 @@ class Urpe(nn.Module):
 
     def do_permutation(self, x):
         b, l, e = x.shape
-        # print(x)
-        # print(self.permutation[:, :l, :])
         x = x.gather(-1, self.permutation[:, :l, :].expand_as(x))
-        # print(x)
 
         return x
 

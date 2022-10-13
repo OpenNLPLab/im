@@ -24,7 +24,10 @@ DATA=../pvc/data
 # for ARCH in norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm_glu_nopos norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm_glu_nopos norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm_glu_maxhead norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm_glu_maxhead
 # for ARCH in tnn_vit_e3g1_tiny_rpe_l1_95 tnn_vit_e3g1_tiny_rpe_l1_95_prenorm
 # for ARCH in tnn_2d_vit_tiny_rpe_v8_l1_prenorm_tno_patch tnn_2d_vit_tiny_rpe_v8_l1_prenorm
-for ARCH in tnn_2d_vit_tiny_rpe_v8_l1_prenorm_tno_patch
+# for ARCH in tnn_2d_vit_tiny_rpe_v8_l1_prenorm_tno_patch
+# for ARCH in norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm_glu
+for ARCH in norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm_glu_standard norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm_glu_standard \
+            norm_vit_small_patch16_224_mix_softmax_1_elu_rmsnorm_glu norm_vit_small_patch16_224_mix_relu_elu_rmsnorm_glu
 do
     CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=$GPUS --master_port=$PORT \
         --use_env $PROG --data-set CIFAR --batch-size $batch_size --num_workers 1 --lr 3e-3 \

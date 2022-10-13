@@ -2,6 +2,8 @@ from torch import nn
 
 import torch
 import torch.nn.functional as F
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 from .normlization import SimpleRMSNorm
 
@@ -35,3 +37,11 @@ def get_norm(norm_type, embed_dim):
 
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
+
+def print_params(**kwargs):
+    logging.info(f"start print config of {kwargs['__class__']}")
+    for key in kwargs:
+        if key in ["__class__", "self"]:
+            continue
+        logging.info(f"{key}: {kwargs[key]}")
+    logging.info(f"end print config of {kwargs['__class__']}")

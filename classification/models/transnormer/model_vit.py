@@ -15,6 +15,7 @@ from models.helpers import FFN
 from models.helpers import get_activation_fn, get_norm, pair
 
 from .backbone import Block
+from models.helpers import print_params
 
 ##### no cls
 class Vin(nn.Module):
@@ -52,6 +53,13 @@ class Vin(nn.Module):
         headslist=[],
     ):
         super().__init__()
+        if headslist == []:
+            headslist = [heads] * depth
+        # get local varables
+        params = locals()
+        # print params
+        print_params(**params)
+        
         image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
 
@@ -67,19 +75,15 @@ class Vin(nn.Module):
         )
 
         self.use_pos = use_pos
-        print(f"use_pos {use_pos}")
         if self.use_pos:
             self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
         self.dropout = nn.Dropout(emb_dropout)
 
         self.layers = nn.ModuleList([])
         assert len(type_list) == depth
-        if headslist == []:
-            headslist = [heads] * depth
         for i in range(depth):
             heads = headslist[i]
             dim_head = dim // heads
-            print(f"head of layer {i}: {heads}")
             self.layers.append(
                 Block(
                     dim=dim, 

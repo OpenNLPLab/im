@@ -1,9 +1,14 @@
-from .helpers import get_activation_fn
-from .helpers import get_norm
-from .helpers import pair
+from .helpers import (
+    get_activation_fn,
+    get_norm,
+    pair,
+    print_params
+)
 
-from .normlization import SimpleRMSNorm
-from .normlization import get_norm_fun
+from .normlization import (
+    SimpleRMSNorm,
+    get_norm_fun,
+)
 
 from .glu import GLU
 
