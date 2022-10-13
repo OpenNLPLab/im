@@ -238,9 +238,37 @@ def tnn_2d_pyr_tiny_rpe_v8_l1(pretrained=False, **kwargs):
         glu_act="silu",
         glu_dim=glu_dim,
         expand_ratio=3,
-        depths=[2, 2, 6, 2], 
+        depths=[2, 2, 4, 2], 
         use_pos=False,
         rpe_layers=1,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+
+@register_model
+def tnn_2d_pyr_tiny_rpe_v8_l1_prenorm(pretrained=False, **kwargs):
+    patch_size = 4
+    dim = 48
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    prenorm = True
+    model = TNN2DPyr(
+        patch_size=patch_size, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depths=[2, 2, 4, 2], 
+        use_pos=False,
+        rpe_layers=1,
+        prenorm=prenorm,
         **kwargs
     )
     model.default_cfg = _cfg()

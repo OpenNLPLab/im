@@ -26,8 +26,9 @@ DATA=../pvc/data
 # for ARCH in tnn_2d_vit_tiny_rpe_v8_l1_prenorm_tno_patch tnn_2d_vit_tiny_rpe_v8_l1_prenorm
 # for ARCH in tnn_2d_vit_tiny_rpe_v8_l1_prenorm_tno_patch
 # for ARCH in norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm_glu
-for ARCH in norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm_glu_standard norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm_glu_standard \
-            norm_vit_small_patch16_224_mix_softmax_1_elu_rmsnorm_glu norm_vit_small_patch16_224_mix_relu_elu_rmsnorm_glu
+# for ARCH in norm_vit_tiny_patch16_224_mix_softmax_1_elu_rmsnorm_glu_standard norm_vit_tiny_patch16_224_mix_relu_elu_rmsnorm_glu_standard \
+#             norm_vit_small_patch16_224_mix_softmax_1_elu_rmsnorm_glu norm_vit_small_patch16_224_mix_relu_elu_rmsnorm_glu
+for ARCH in tnn_2d_pyr_tiny_rpe_v8_l1 tnn_2d_pyr_tiny_rpe_v8_l1_prenorm tnn_2d_vit_tiny_rpe_v8_l1_prenorm
 do
     CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=$GPUS --master_port=$PORT \
         --use_env $PROG --data-set CIFAR --batch-size $batch_size --num_workers 1 --lr 3e-3 \

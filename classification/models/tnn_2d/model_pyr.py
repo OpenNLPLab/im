@@ -8,7 +8,8 @@ from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
 import math
 
-from models.helpers import GLU, SimpleRMSNorm, pair
+from models.helpers import GLU, SimpleRMSNorm, pair, print_params
+
 from .gtu_2d import Gtu2d
 from .backbone import Block, DownSample
 
@@ -30,6 +31,7 @@ class BlockStage(nn.Module):
         n,
         m,
         use_downsample=True,
+        prenorm=False,
     ):
         super().__init__()
         self.layers = nn.ModuleList([])
@@ -51,6 +53,7 @@ class BlockStage(nn.Module):
                     gamma=gamma,
                     n=n,
                     m=m,
+                    prenorm=prenorm
                 )
             )
         self.use_downsample = use_downsample
@@ -94,8 +97,14 @@ class TNN2DPyr(nn.Module):
         # pad
         drop_rate=0.,
         drop_path_rate=0.,
+        prenorm=False,
     ):
         super().__init__()
+        # get local varables
+        params = locals()
+        # print params
+        print_params(**params)
+        
         self.num_classes = num_classes
 
         image_height, image_width = pair(img_size)
@@ -136,6 +145,7 @@ class TNN2DPyr(nn.Module):
                 n=n,
                 m=m,
                 use_downsample=flag,
+                prenorm=prenorm,
             )
             self.block_stages.append(block_stage)
             if flag:
@@ -149,21 +159,6 @@ class TNN2DPyr(nn.Module):
             SimpleRMSNorm(embed_dim),
             nn.Linear(embed_dim, num_classes)
         )
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
 
     def freeze_patch_emb(self):
         self.patch_embed1.requires_grad = False
