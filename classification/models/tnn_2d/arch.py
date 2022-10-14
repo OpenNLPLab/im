@@ -218,6 +218,34 @@ def tnn_2d_vit_tiny_rpe_v8_l1_prenorm_tno_patch(pretrained=False, **kwargs):
 ##### patch embedding test
 ########## Deit tiny
 
+########## Deit small
+@register_model
+def tnn_2d_vit_small_rpe_v8_l1_prenorm(pretrained=False, **kwargs):
+    dim = 384
+    glu_dim = dim
+    rpe_dim = 32
+    num_heads = 1
+    depth = 12
+    prenorm = True
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=1,
+        prenorm=prenorm,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+########## Deit small
 ############### model_vit
 
 ############### model_pyr
