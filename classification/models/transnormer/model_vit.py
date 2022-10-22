@@ -9,7 +9,7 @@ from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
 from torch import nn
 
-from .backbone import Block
+from .backbone import Block, OverlapPatchEmbed
 
 
 ##### no cls
@@ -30,7 +30,6 @@ class Vin(nn.Module):
         emb_dropout=0., 
         drop_path_rate=0.,
         # add
-        r=7, 
         use_urpe=False, 
         # add
         type_list=[],
@@ -46,6 +45,9 @@ class Vin(nn.Module):
         glu_dim=-1,
         # num_heads_list
         num_heads_list=[],
+        # overlap patch
+        use_over_lap=False,
+        stride=-1
     ):
         super().__init__()
         if num_heads_list == []:
@@ -60,15 +62,26 @@ class Vin(nn.Module):
 
         assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
 
-        num_patches = (image_height // patch_height) * (image_width // patch_width)
         patch_dim = channels * patch_height * patch_width
         assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
 
-        self.to_patch_embedding = nn.Sequential(
-            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
-            nn.Linear(patch_dim, dim),
-        )
-
+        if use_over_lap and stride > 0:
+            self.to_patch_embedding = OverlapPatchEmbed(
+                patch_size=patch_size,
+                stride=stride,
+                in_chans=channels,
+                embed_dim=dim,
+            )
+            num_patches = self.to_patch_embedding.num_patches
+            r = self.to_patch_embedding.H
+        else:
+            self.to_patch_embedding = nn.Sequential(
+                Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
+                nn.Linear(patch_dim, dim),
+            )
+            num_patches = (image_height // patch_height) * (image_width // patch_width)
+            r = image_height // patch_height
+ 
         self.use_pos = use_pos
         if self.use_pos:
             self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
@@ -87,7 +100,7 @@ class Vin(nn.Module):
                     dim_head=dim_head, 
                     mlp_dim=mlp_dim, 
                     dropout=drop_rate, 
-                    r=image_height // patch_height, 
+                    r=r, 
                     use_urpe=use_urpe, 
                     type_index=type_list[i],
                     norm_type=norm_type,

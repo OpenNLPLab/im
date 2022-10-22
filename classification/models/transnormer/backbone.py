@@ -6,6 +6,8 @@ from models.helpers import (FFN, GLU, SimpleRMSNorm, Urpe, get_activation_fn,
                             get_norm)
 from torch import nn
 
+from ..helpers import pair
+
 
 ##### no cls
 class DiagBlockAttention(nn.Module):
@@ -15,7 +17,7 @@ class DiagBlockAttention(nn.Module):
         num_heads=8, 
         dim_head=64, 
         dropout=0., 
-        r=7, # 每行的patch数量
+        r=7, # number of rows
         use_urpe=False,
         use_softmax=True,
         norm_type="layernorm",
@@ -111,7 +113,7 @@ class NormLinearAttention(nn.Module):
         num_heads=8, 
         dim_head=64, 
         dropout=0., 
-        r=7, # 每行的patch数量
+        r=7, # number of rows
         use_urpe=False,
         norm_type="layernorm",
         act_fun="relu",
@@ -168,7 +170,7 @@ class Block(nn.Module):
         mlp_dim, 
         dropout=0., 
         drop_path=0., 
-        r=7, 
+        r=7, # number of rows
         use_urpe=False, 
         # add
         type_index=-1,
@@ -248,5 +250,27 @@ class Block(nn.Module):
     def forward(self, x):
         x = x + self.drop_path(self.token_mixer(self.token_norm(x)))
         x = x + self.drop_path(self.feature_mixer(self.feature_norm(x)))
+
+        return x
+
+class OverlapPatchEmbed(nn.Module):
+    def __init__(self, img_size=224, patch_size=16, stride=14, in_chans=3, embed_dim=192):
+        super().__init__()
+        # compute num_patches
+        padding = patch_size // 2
+        padding = pair(padding)
+        img_size = pair(img_size)
+        patch_size = pair(patch_size)
+        dilation = (1, 1)
+        self.H = int((img_size[0] + (padding[0]) * 2 - dilation[0] * (patch_size[0] - 1) - 1) / stride) + 1
+        self.W = int((img_size[1] + (padding[1]) * 2 - dilation[1] * (patch_size[1] - 1) - 1) / stride) + 1
+        self.num_patches = self.H * self.W
+        # init module
+        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=stride,
+                              padding=(padding[0], padding[1]))
+        
+    def forward(self, x):
+        x = self.proj(x)
+        x = rearrange(x, 'b e h w -> b (h w) e')
 
         return x
