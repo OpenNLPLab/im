@@ -1,17 +1,16 @@
 import math
+from typing import Dict, Optional, Tuple
+
 import numpy as np
 import torch
 import torch.nn.functional as F
-
-from typing import Dict, Optional, Tuple
-from torch import Tensor, nn
-from torch.nn import Parameter
-from torch.nn import Dropout
 from einops import rearrange
+from models.helpers import SimpleRMSNorm, get_activation_fn, get_norm_fun
+from torch import Tensor, nn
+from torch.nn import Dropout, Parameter
 
-from models.helpers import SimpleRMSNorm
-from models.helpers import get_activation_fn, get_norm_fun
 from .tno import Tno
+
 
 class Gtu(nn.Module):
     def __init__(
@@ -116,16 +115,6 @@ class Gtu(nn.Module):
         self.use_norm = use_norm
         if self.use_norm:
             self.norm = get_norm_fun(self.norm_type, d1)
-
-        # self.par_init()
-        
-    def par_init(self):
-        nn.init.normal_(self.u_proj.weight, std=0.02)
-        nn.init.normal_(self.u_proj.bias, std=0.02)
-        nn.init.normal_(self.v_proj.weight, std=0.02)
-        nn.init.normal_(self.v_proj.bias, std=0.02)
-        nn.init.normal_(self.o.weight, std=0.02)
-        nn.init.normal_(self.o.bias, std=0.02)
     
     # col + row
     def forward(self, x, H, W):

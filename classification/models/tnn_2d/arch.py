@@ -1,8 +1,10 @@
 # Network architecture under test
 from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
-from .model_vit import *
+
 from .model_pyr import *
+from .model_vit import *
+
 
 ############### model_vit
 ########## Deit tiny

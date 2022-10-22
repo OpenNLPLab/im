@@ -1,22 +1,18 @@
 # https://github.com/lucidrains/vit-pytorch/blob/main/norm_vit_pytorch/vit.py
 import torch
 import torch.nn.functional as F
-
-from torch import nn
 from einops import rearrange, repeat
+from models.helpers import (FFN, GLU, SimpleRMSNorm, Urpe, get_activation_fn,
+                            get_norm)
+from torch import nn
 
-from models.helpers import SimpleRMSNorm
-from models.helpers import Urpe
-from models.helpers import GLU
-from models.helpers import FFN
-from models.helpers import get_activation_fn, get_norm
 
 ##### no cls
 class DiagBlockAttention(nn.Module):
     def __init__(
         self, 
         dim, 
-        heads=8, 
+        num_heads=8, 
         dim_head=64, 
         dropout=0., 
         r=7, # 每行的patch数量
@@ -27,9 +23,9 @@ class DiagBlockAttention(nn.Module):
         act_fun="relu",
     ):
         super().__init__()
-        inner_dim = dim_head *  heads
+        inner_dim = dim_head *  num_heads
 
-        self.heads = heads
+        self.num_heads = num_heads
         self.scale = dim_head ** -0.5
 
         self.atten = nn.Softmax(dim = -1)
@@ -76,7 +72,7 @@ class DiagBlockAttention(nn.Module):
 
     def forward(self, x):
         qkv = self.to_qkv(x).chunk(3, dim = -1)
-        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.num_heads), qkv)
         if self.use_urpe:
             q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.r)
             k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.r)
@@ -112,7 +108,7 @@ class NormLinearAttention(nn.Module):
     def __init__(
         self, 
         dim, 
-        heads=8, 
+        num_heads=8, 
         dim_head=64, 
         dropout=0., 
         r=7, # 每行的patch数量
@@ -121,9 +117,9 @@ class NormLinearAttention(nn.Module):
         act_fun="relu",
     ):
         super().__init__()
-        inner_dim = dim_head *  heads
+        inner_dim = dim_head *  num_heads
 
-        self.heads = heads
+        self.num_heads = num_heads
         self.scale = dim_head ** -0.5
 
         self.dropout = nn.Dropout(dropout)
@@ -144,7 +140,7 @@ class NormLinearAttention(nn.Module):
 
     def forward(self, x):
         qkv = self.to_qkv(x).chunk(3, dim = -1)
-        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.num_heads), qkv)
         q = self.act_fun(q)
         k = self.act_fun(k)
         if self.use_urpe:
@@ -167,7 +163,7 @@ class Block(nn.Module):
         self, 
         dim, 
         depth, 
-        heads, 
+        num_heads, 
         dim_head, 
         mlp_dim, 
         dropout=0., 
@@ -196,7 +192,7 @@ class Block(nn.Module):
             block_act=block_act, 
             linear_act=linear_act,
             dim=dim,
-            heads=heads,
+            num_heads=num_heads,
             dim_head=dim_head,
             dropout=dropout,
             r=r,
@@ -218,7 +214,7 @@ class Block(nn.Module):
         block_act, 
         linear_act,
         dim,
-        heads,
+        num_heads,
         dim_head,
         dropout,
         r,
@@ -227,7 +223,7 @@ class Block(nn.Module):
         if type_index == 1:
             return DiagBlockAttention(
                 dim=dim,
-                heads=heads,
+                num_heads=num_heads,
                 dim_head=dim_head,
                 dropout=dropout,
                 r=r,
@@ -240,7 +236,7 @@ class Block(nn.Module):
         else:
             return NormLinearAttention(
                 dim=dim,
-                heads=heads,
+                num_heads=num_heads,
                 dim_head=dim_head,
                 dropout=dropout,
                 r=r,

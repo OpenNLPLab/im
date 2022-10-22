@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+
 class SimpleRMSNorm(nn.Module):
     def __init__(self, d, p=-1., eps=1e-8, bias=False):
         """

@@ -1,18 +1,18 @@
+import math
+
 import torch
-from torch import nn
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
-
+from models.helpers import GLU, SimpleRMSNorm, pair, print_params
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
-import math
+from torch import nn
 
-from models.helpers import GLU, SimpleRMSNorm, pair, print_params
-
-from .gtu_2d import Gtu2d
 from .backbone import Block
+from .gtu_2d import Gtu2d
 from .tno_2d import Tno2dPatchEmbedding
+
 
 class TNN2DVit(nn.Module):
     def __init__(

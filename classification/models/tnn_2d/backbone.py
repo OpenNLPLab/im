@@ -1,10 +1,11 @@
 import torch
-from torch import nn
-from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from einops import rearrange
-
 from models.helpers import GLU, SimpleRMSNorm
+from timm.models.layers import DropPath, to_2tuple, trunc_normal_
+from torch import nn
+
 from .gtu_2d import Gtu2d
+
 
 class Block(nn.Module):
     def __init__(

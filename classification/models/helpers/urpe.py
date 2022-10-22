@@ -1,13 +1,15 @@
 # - https://github.com/zh217/torch-dct
 # - https://github.com/zh217/torch-dct/issues/15
 
-import torch
-import torch.nn as nn
-import torch.functional as F
-import numpy as np
 import logging
 
+import numpy as np
+import torch
+import torch.functional as F
+import torch.nn as nn
+
 from .helpers import print_params
+
 
 class Urpe(nn.Module):
     def __init__(self, core_matrix, p_matrix, max_positions=512, embedding_dim=768, 
@@ -16,7 +18,7 @@ class Urpe(nn.Module):
         super().__init__()
         # get local varables
         params = locals()
-        # logging.info params
+        # print params
         print_params(**params)
         
         self.core_matrix = core_matrix

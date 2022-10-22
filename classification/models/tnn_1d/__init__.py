@@ -1,2 +1,2 @@
-from .model_vit import *
 from .arch import *
+from .model_vit import *

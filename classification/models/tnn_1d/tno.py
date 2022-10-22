@@ -2,15 +2,13 @@
 # https://stackoverflow.com/questions/69809789/is-there-any-way-to-create-a-tensor-with-a-specific-pattern-in-pytorch
 # https://github.com/cheerss/CrossFormer/blob/main/models/crossformer.py
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-
 from einops import rearrange, repeat
+from models.helpers import SimpleRMSNorm, get_activation_fn
 
-from models.helpers import SimpleRMSNorm
-from models.helpers import get_activation_fn
 
 class Rpe(nn.Module):
     def __init__(self, dim, outdim, residual, act="relu", bias=True, layers=3):

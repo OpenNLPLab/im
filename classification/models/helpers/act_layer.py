@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from .helpers import get_activation_fn
+
 
 class ActLayer(nn.Module):
     def __init__(self, act_fun):

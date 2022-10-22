@@ -1,8 +1,8 @@
 import torch.nn as nn
+from models.helpers import GLU, SimpleRMSNorm
 
-from models.helpers import SimpleRMSNorm
-from models.helpers import GLU
 from .gtu import Gtu
+
 
 class Block(nn.Module):
     def __init__(

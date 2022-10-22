@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 from .helpers import get_activation_fn, print_params
 
+
 class GLU(nn.Module):
     def __init__(self, d1, d2, act_fun, fina_act="None", dropout=0.0, bias=True):
         super().__init__()

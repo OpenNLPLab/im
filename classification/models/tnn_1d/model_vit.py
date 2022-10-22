@@ -1,17 +1,17 @@
-import torch
 import math
 
-from torch import nn
+import torch
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
+from models.helpers import GLU, SimpleRMSNorm, pair, print_params
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
+from torch import nn
 
-from models.helpers import GLU, SimpleRMSNorm, pair, print_params
-
-from .tno import Tno
 from .backbone import Block
+from .tno import Tno
+
 
 class TNNVit(nn.Module):
     def __init__(

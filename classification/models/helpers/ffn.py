@@ -1,5 +1,6 @@
 import torch.nn as nn
 
+
 class FFN(nn.Module):
     def __init__(self, dim, hidden_dim, dropout=0.):
         super().__init__()

@@ -1,21 +1,16 @@
 # https://github.com/lucidrains/vit-pytorch/blob/main/norm_vit_pytorch/vit.py
 import torch
 import torch.nn.functional as F
-from torch import nn
-
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
+from models.helpers import (FFN, GLU, SimpleRMSNorm, Urpe, get_activation_fn,
+                            get_norm, pair, print_params)
 from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
-
-from models.helpers import SimpleRMSNorm
-from models.helpers import Urpe
-from models.helpers import GLU
-from models.helpers import FFN
-from models.helpers import get_activation_fn, get_norm, pair
+from torch import nn
 
 from .backbone import Block
-from models.helpers import print_params
+
 
 ##### no cls
 class Vin(nn.Module):
@@ -27,7 +22,7 @@ class Vin(nn.Module):
         num_classes, 
         dim, 
         depth, 
-        heads, 
+        num_heads, 
         mlp_dim, 
         pool='cls', 
         channels=3, 
@@ -49,12 +44,12 @@ class Vin(nn.Module):
         use_glu=False,
         glu_act="silu",
         glu_dim=-1,
-        # headslist
-        headslist=[],
+        # num_heads_list
+        num_heads_list=[],
     ):
         super().__init__()
-        if headslist == []:
-            headslist = [heads] * depth
+        if num_heads_list == []:
+            num_heads_list = [num_heads] * depth
         # get local varables
         params = locals()
         # print params
@@ -82,13 +77,13 @@ class Vin(nn.Module):
         self.layers = nn.ModuleList([])
         assert len(type_list) == depth
         for i in range(depth):
-            heads = headslist[i]
-            dim_head = dim // heads
+            num_heads = num_heads_list[i]
+            dim_head = dim // num_heads
             self.layers.append(
                 Block(
                     dim=dim, 
                     depth=depth, 
-                    heads=heads, 
+                    num_heads=num_heads, 
                     dim_head=dim_head, 
                     mlp_dim=mlp_dim, 
                     dropout=drop_rate, 

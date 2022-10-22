@@ -1,33 +1,35 @@
 # Copyright (c) 2015-present, Facebook, Inc.
 # All rights reserved.
-import os
 import argparse
 import datetime
-import time
-import torch
-import numpy as np
-import torch.backends.cudnn as cudnn
 import json
+import os
+import time
 import warnings
+
+import numpy as np
+import torch
+import torch.backends.cudnn as cudnn
+
 warnings.filterwarnings("ignore")
 
-import utils.utils
-
-from pathlib import Path
-from timm.data import Mixup
-from timm.models import create_model
-from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
-from timm.scheduler import create_scheduler
-from timm.optim import create_optimizer
-from timm.utils import NativeScaler, get_state_dict, ModelEma
 from collections import OrderedDict
+from pathlib import Path
 
+from timm.data import Mixup
+from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
+from timm.models import create_model
+from timm.optim import create_optimizer
+from timm.scheduler import create_scheduler
+from timm.utils import ModelEma, NativeScaler, get_state_dict
+
+import utils.utils
+from models import *
 from utils.datasets import build_dataset
-from utils.engine import train_one_epoch, evaluate
+from utils.engine import evaluate, train_one_epoch
 from utils.losses import DistillationLoss
 from utils.samplers import RASampler
 
-from models import *
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Im training and evaluation script', add_help=False)
