@@ -86,11 +86,11 @@ class DiagBlockAttention(nn.Module):
         r = self.r
         c = q.shape[-2] // r
         # chunk
-        # b h n m (g g) d
+        # b h (n g) (m e) d -> b h n m (g e) d
         q = self.transform(q, r, c)
         k = self.transform(k, r, c)
         v = self.transform(v, r, c)
-        
+
         dots = torch.einsum('...nd,...md->...nm', q, k) * self.scale
         if self.use_softmax:
             attn = self.atten(dots)
