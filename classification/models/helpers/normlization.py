@@ -24,9 +24,3 @@ class SimpleRMSNorm(nn.Module):
         x_normed = x / (rms_x + self.eps)
 
         return x_normed
-    
-def get_norm_fun(norm_type, embed_dim):
-    if norm_type == "simplermsnorm":
-        return SimpleRMSNorm(embed_dim)
-    else:
-        return nn.LayerNorm(embed_dim)

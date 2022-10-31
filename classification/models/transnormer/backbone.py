@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from einops import rearrange, repeat
 from models.helpers import (FFN, GLU, SimpleRMSNorm, Urpe, get_activation_fn,
-                            get_norm)
+                            get_norm_fn)
 from torch import nn
 
 from ..helpers import pair
@@ -46,7 +46,7 @@ class DiagBlockAttention(nn.Module):
             self.urpe = Urpe(core_matrix=1, p_matrix=3, embedding_dim=dim_head, theta_learned=True, dims=[2, 3])
         self.use_softmax = use_softmax
         if not self.use_softmax:
-            self.norm = get_norm(norm_type, inner_dim)
+            self.norm = get_norm_fn(norm_type)(inner_dim)
         self.block_size = block_size
         self.act_fun = get_activation_fn(act_fun)
 
@@ -137,7 +137,7 @@ class NormLinearAttention(nn.Module):
         self.use_urpe = use_urpe
         if self.use_urpe:
             self.urpe = Urpe(core_matrix=1, p_matrix=3, embedding_dim=dim_head, theta_learned=True, dims=[2, 3])
-        self.norm = get_norm(norm_type, inner_dim)
+        self.norm = get_norm_fn(norm_type)(inner_dim)
         self.act_fun = get_activation_fn(act_fun)
 
     def forward(self, x):
@@ -204,8 +204,8 @@ class Block(nn.Module):
             self.feature_mixer = GLU(dim, glu_dim, glu_act)
         else:
             self.feature_mixer = FFN(dim, mlp_dim, dropout=dropout)
-        self.token_norm = get_norm(norm_type, dim)
-        self.feature_norm = get_norm(norm_type, dim)
+        self.token_norm = get_norm_fn(norm_type)(dim)
+        self.feature_norm = get_norm_fn(norm_type)(dim)
     
     def get_attention(
         self, 

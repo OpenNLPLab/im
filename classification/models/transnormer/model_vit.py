@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 from models.helpers import (FFN, GLU, SimpleRMSNorm, Urpe, get_activation_fn,
-                            get_norm, pair, print_params)
+                            get_norm_fn, pair, print_params)
 from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
 from torch import nn
@@ -116,7 +116,7 @@ class Vin(nn.Module):
 
         # classification head
         self.head = nn.Sequential(
-            get_norm(norm_type, dim),
+            get_norm_fn(norm_type)(dim),
             nn.Linear(dim, num_classes)
         )
         

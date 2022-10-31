@@ -7,11 +7,20 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
-from models.helpers import SimpleRMSNorm, get_activation_fn
+from models.helpers import SimpleRMSNorm, get_activation_fn, get_norm_fn
 
 
 class Rpe2d(nn.Module):
-    def __init__(self, dim, outdim, residual, act="relu", bias=True, layers=3):
+    def __init__(
+        self, 
+        dim, 
+        outdim, 
+        residual, 
+        act="relu", 
+        bias=True, 
+        layers=3,
+        norm_type="simplermsnorm",
+    ):
         super().__init__()
         self.residual = residual
         self.outdim = outdim
@@ -22,13 +31,13 @@ class Rpe2d(nn.Module):
         for i in range(layers):
             self.layers.append(
                 nn.Sequential(
-                    SimpleRMSNorm(self.pos_dim),
+                    get_norm_fn(norm_type)(self.pos_dim),
                     self.get_act(),
                     nn.Linear(self.pos_dim, self.pos_dim, bias=bias),
                 )
             )
         self.out = nn.Sequential(
-            SimpleRMSNorm(self.pos_dim),
+            get_norm_fn(norm_type)(self.pos_dim),
             self.get_act(),
             nn.Linear(self.pos_dim, self.outdim, bias=bias)
         )
@@ -65,12 +74,11 @@ class Tno2D(nn.Module):
         residual=False, 
         act="relu", 
         par_type=1, 
-        l=10,
-        transform_type=1,
         gamma=0.999,
         bias=True,
         act_type="none",
         layers=3,
+        norm_type="simplermsnorm",
     ):
         super().__init__()
         self.h = h
@@ -97,7 +105,15 @@ class Tno2D(nn.Module):
             self.lambda_ = gamma
             self.gamma = nn.Parameter(torch.randn(self.h, 1, 1, self.dim))
 
-        self.rpe = Rpe2d(dim=rpe_dim, outdim=self.h * self.dim, residual=residual, bias=bias, layers=layers)  
+        self.rpe = Rpe2d(
+            dim=rpe_dim, 
+            outdim=h * dim, 
+            residual=residual, 
+            bias=bias, 
+            layers=layers,
+            norm_type=norm_type,
+        )  
+        
         self.act_type = act_type
         self.act_fun = get_activation_fn(self.act_type)
 
@@ -245,8 +261,6 @@ class Tno2dPatchEmbedding(nn.Module):
         par_type=1,
         rpe_layers=3,
         residual=False,
-        l=1, 
-        transform_type=1,
         gamma=0.999,
         n=224,
         m=224,
@@ -263,8 +277,6 @@ class Tno2dPatchEmbedding(nn.Module):
         self.normalize = normalize
         self.par_type = par_type
         self.residual = residual
-        self.l = l
-        self.transform_type = transform_type
         self.gamma = gamma
         self.rpe_layers = rpe_layers
         self.n = n
@@ -283,8 +295,6 @@ class Tno2dPatchEmbedding(nn.Module):
             par_type=self.par_type,
             residual=self.residual,
             layers=self.rpe_layers,
-            l=self.l,
-            transform_type=self.transform_type,
             gamma=self.gamma,
         )
 

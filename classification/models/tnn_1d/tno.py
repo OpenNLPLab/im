@@ -7,11 +7,20 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
-from models.helpers import SimpleRMSNorm, get_activation_fn
+from models.helpers import SimpleRMSNorm, get_activation_fn, get_norm_fn
 
 
 class Rpe(nn.Module):
-    def __init__(self, dim, outdim, residual, act="relu", bias=True, layers=3):
+    def __init__(
+        self, 
+        dim, 
+        outdim, 
+        residual, 
+        act="relu", 
+        bias=True, 
+        layers=3,
+        norm_type="simplermsnorm",
+    ):
         super().__init__()
         self.residual = residual
         self.outdim = outdim
@@ -22,13 +31,13 @@ class Rpe(nn.Module):
         for i in range(layers):
             self.layers.append(
                 nn.Sequential(
-                    SimpleRMSNorm(self.pos_dim),
+                    get_norm_fn(norm_type)(self.pos_dim),
                     self.get_act(),
                     nn.Linear(self.pos_dim, self.pos_dim, bias=bias),
                 )
             )
         self.out = nn.Sequential(
-            SimpleRMSNorm(self.pos_dim),
+            get_norm_fn(norm_type)(self.pos_dim),
             self.get_act(),
             nn.Linear(self.pos_dim, self.outdim, bias=bias),
         )
@@ -65,11 +74,11 @@ class Tno(nn.Module):
         residual=False, 
         act="relu", 
         par_type=1, 
-        transform_type=1,
         gamma=0.999,
         bias=True,
         act_type="none",
         layers=3,
+        norm_type="simplermsnorm",
     ):
         super().__init__()
         self.h = h
@@ -77,16 +86,24 @@ class Tno(nn.Module):
         self.causal = causal
         self.par_type = par_type
         self.zero_value = 0
-
         self.use_decay = use_decay
+
         if self.use_decay:
-            self.gamma = nn.Parameter(torch.ones(self.h, 1, self.dim) * gamma, requires_grad=False)
+            self.gamma = nn.Parameter(torch.ones(h, 1, dim) * gamma, requires_grad=False)
         self.use_multi_decay = use_multi_decay
         if self.use_multi_decay:
             self.lambda_ = gamma
-            self.gamma = nn.Parameter(torch.randn(self.h, 1, self.dim))
+            self.gamma = nn.Parameter(torch.randn(h, 1, dim))
 
-        self.rpe = Rpe(dim=rpe_dim, outdim=self.h * self.dim, residual=residual, bias=bias, layers=layers)
+        self.rpe = Rpe(
+            dim=rpe_dim, 
+            outdim=h * dim, 
+            residual=residual,
+            act=act,
+            bias=bias, 
+            layers=layers,
+            norm_type=norm_type,
+        )
         
         if self.causal:
             self.forward = self.forward_causal
@@ -228,9 +245,9 @@ class Tno(nn.Module):
         n = x.shape[dim]
         # c: first col, r: first row
         # 1, d, 1 -> h, 1, d
-        zero = self.rpe_transform(self.get_zero())
-        pos = self.rpe_transform(self.get_pos(n - 1))
-        neg_index = self.get_neg(n - 1)
+        zero = self.rpe_transform(self.get_zero()).to(x)
+        pos = self.rpe_transform(self.get_pos(n - 1)).to(x)
+        neg_index = self.get_neg(n - 1).to(x)
         if self.causal:
             neg = neg_index
         else:

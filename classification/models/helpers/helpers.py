@@ -31,11 +31,11 @@ def get_activation_fn(activation):
     else:
         return lambda x: x
     
-def get_norm(norm_type, embed_dim):
+def get_norm_fn(norm_type):
     if norm_type == "simplermsnorm":
-        return SimpleRMSNorm(embed_dim)
+        return SimpleRMSNorm
     else:
-        return nn.LayerNorm(embed_dim)
+        return nn.LayerNorm
 
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)

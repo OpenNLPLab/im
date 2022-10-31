@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from einops import rearrange
-from models.helpers import get_activation_fn, get_norm_fun, print_params
+from models.helpers import get_activation_fn, get_norm_fn, print_params
 from torch import Tensor, nn
 from torch.nn import Dropout, Parameter
 
@@ -37,8 +37,6 @@ class Gtu2d(nn.Module):
         par_type=1,
         rpe_layers=3,
         residual=False,
-        l=1, 
-        transform_type=1,
         gamma=0.999,
         n=14,
         m=14,
@@ -80,8 +78,6 @@ class Gtu2d(nn.Module):
         self.normalize = normalize
         self.par_type = par_type
         self.residual = residual
-        self.l = l
-        self.transform_type = transform_type
         self.gamma = gamma
         self.bias = bias
         self.rpe_layers = rpe_layers
@@ -100,19 +96,18 @@ class Gtu2d(nn.Module):
             par_type=self.par_type,
             residual=self.residual,
             layers=self.rpe_layers,
-            l=self.l,
-            transform_type=self.transform_type,
             gamma=self.gamma,
             bias=self.bias,
+            norm_type=norm_type,
         )
         
         # norm
         self.norm_type = norm_type
-        self.pre_norm = get_norm_fun(self.norm_type, d2)
+        self.pre_norm = get_norm_fn(self.norm_type)(d2)
         
         self.use_norm = use_norm
         if self.use_norm:
-            self.norm = get_norm_fun(norm_type, d1)
+            self.norm = get_norm_fn(norm_type)(d1)
 
     def forward(self, x, H, W):
         # x: b, h * w, d

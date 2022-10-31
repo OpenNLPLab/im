@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from einops import rearrange
-from models.helpers import SimpleRMSNorm, get_activation_fn, get_norm_fun
+from models.helpers import SimpleRMSNorm, get_activation_fn, get_norm_fn
 from torch import Tensor, nn
 from torch.nn import Dropout, Parameter
 
@@ -17,17 +17,13 @@ class Gtu(nn.Module):
         self,
         embed_dim,
         num_heads,
-        dropout=0.0,
         bias=True,
-        # add
         act_fun="silu",
         causal=False,
-        expand_ratio=2,
+        expand_ratio=3,
         resi_param=False,
-        # norm
         use_norm=False,
         norm_type="simplermsnorm",
-        # Toeplizt
         use_decay=False,
         use_multi_decay=False,
         rpe_layers=3,
@@ -36,8 +32,8 @@ class Gtu(nn.Module):
         normalize=False,
         par_type=1,
         residual=False,
-        transform_type=1,
-        gamma=0.999,
+        gamma=0.99,
+        act_type="none",
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -72,49 +68,50 @@ class Gtu(nn.Module):
         self.normalize = normalize
         self.par_type = par_type
         self.residual = residual
-        self.transform_type = transform_type
         self.gamma = gamma
         self.bias = bias
         
         self.toep1 = Tno(
-            h=self.num_heads, 
+            h=num_heads, 
             dim=self.head_dim,
-            rpe_dim=self.rpe_embedding, 
-            causal=self.causal, 
-            use_decay=self.use_decay, 
-            use_multi_decay=self.use_multi_decay,
-            act=self.rpe_act,
-            par_type=self.par_type,
-            residual=self.residual,
-            transform_type=self.transform_type,
-            gamma=self.gamma,
-            bias=self.bias,
+            rpe_dim=rpe_embedding, 
+            causal=causal, 
+            use_decay=use_decay, 
+            use_multi_decay=use_multi_decay,
+            residual=residual,
+            act=rpe_act,
+            par_type=par_type,
+            gamma=gamma,
+            bias=bias,
+            act_type=act_type,
             layers=rpe_layers,
+            norm_type=norm_type,
         )
         
         self.toep2 = Tno(
-            h=self.num_heads,  
+            h=num_heads, 
             dim=self.head_dim,
-            rpe_dim=self.rpe_embedding, 
-            causal=self.causal, 
-            use_decay=self.use_decay, 
-            use_multi_decay=self.use_multi_decay,
-            act=self.rpe_act,
-            par_type=self.par_type,
-            residual=self.residual,
-            transform_type=self.transform_type,
-            gamma=self.gamma,
-            bias=self.bias,
+            rpe_dim=rpe_embedding, 
+            causal=causal, 
+            use_decay=use_decay, 
+            use_multi_decay=use_multi_decay,
+            residual=residual,
+            act=rpe_act,
+            par_type=par_type,
+            gamma=gamma,
+            bias=bias,
+            act_type=act_type,
             layers=rpe_layers,
+            norm_type=norm_type,
         )
         
         # norm
         self.norm_type = norm_type
-        self.pre_norm = get_norm_fun(self.norm_type, d2)
+        self.pre_norm = get_norm_fn(self.norm_type)(d2)
         
         self.use_norm = use_norm
         if self.use_norm:
-            self.norm = get_norm_fun(self.norm_type, d1)
+            self.norm = get_norm_fn(self.norm_type)(d1)
     
     # col + row
     def forward(self, x, H, W):
