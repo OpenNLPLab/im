@@ -229,6 +229,7 @@ def logging_info(string):
         logger.info(string)
 
 def init_distributed_mode(args):
+    logging_info("test")
     # 本地多卡
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         args.rank = int(os.environ["RANK"])
@@ -241,7 +242,7 @@ def init_distributed_mode(args):
         args.distributed = True
         torch.cuda.set_device(args.gpu)
         args.dist_backend = 'nccl'
-        logging_info('distributed init (rank {}): {}'.format(args.rank, args.dist_url), flush=True)
+        logging_info(f'distributed init (rank {args.rank}): {args.dist_url}')
         logging_info(args.dist_backend)
         logging_info(args.dist_url)
         logging_info(args.world_size)
@@ -285,7 +286,7 @@ def init_distributed_mode(args):
     logging_info(f"world_size {os.environ['WORLD_SIZE']}")
     logging_info(f"rank {os.environ['RANK']}")
     logging_info(f"local_rank {os.environ['LOCAL_RANK']}")
-    logging_info('distributed init (rank {})'.format(local_rank), flush=True)
+    logging_info(f'distributed init (rank {args.rank}): {args.dist_url}')
     logging_info(f"addr: {host_addr_full}")
     
     torch.distributed.init_process_group(backend=args.dist_backend, init_method=host_addr_full,
