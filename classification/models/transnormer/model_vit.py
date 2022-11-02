@@ -9,7 +9,8 @@ from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
 from torch import nn
 
-from .backbone import Block, OverlapPatchEmbed
+from ..helpers import get_patch_embedding
+from .backbone import Block
 
 
 ##### no cls
@@ -45,9 +46,14 @@ class Vin(nn.Module):
         glu_dim=-1,
         # num_heads_list
         num_heads_list=[],
-        # overlap patch
-        use_over_lap=False,
-        stride=-1
+        # final norm
+        use_final_norm=False,
+        # patch
+        patch_type="mlp", # choose from ["mlp", "overlap", "conv"]
+        stride=-1,
+        conv_kernel_size=3, 
+        conv_stride=2, 
+        conv_padding=1,
     ):
         super().__init__()
         if num_heads_list == []:
@@ -57,30 +63,44 @@ class Vin(nn.Module):
         # print params
         print_params(**params)
         
-        image_height, image_width = pair(image_size)
-        patch_height, patch_width = pair(patch_size)
+        # image_height, image_width = pair(image_size)
+        # patch_height, patch_width = pair(patch_size)
 
-        assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
+        # assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
 
-        patch_dim = channels * patch_height * patch_width
-        assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
+        # patch_dim = channels * patch_height * patch_width
+        patch_dim = channels * patch_size * patch_size
+        # assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
 
-        if use_over_lap and stride > 0:
-            self.to_patch_embedding = OverlapPatchEmbed(
-                patch_size=patch_size,
-                stride=stride,
-                in_chans=channels,
-                embed_dim=dim,
-            )
-            num_patches = self.to_patch_embedding.num_patches
-            r = self.to_patch_embedding.H
-        else:
-            self.to_patch_embedding = nn.Sequential(
-                Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
-                nn.Linear(patch_dim, dim),
-            )
-            num_patches = (image_height // patch_height) * (image_width // patch_width)
-            r = image_height // patch_height
+        self.to_patch_embedding, num_patches, num_row_patches = get_patch_embedding(
+            patch_type=patch_type, 
+            dim=dim,
+            # mlp
+            patch_dim=patch_dim,
+            # overlap
+            patch_size=patch_size,
+            stride=stride,
+            # conv
+            conv_kernel_size=conv_kernel_size, 
+            conv_stride=conv_stride, 
+            conv_padding=conv_padding,
+        )
+        # if use_over_lap and stride > 0:
+        #     self.to_patch_embedding = OverlapPatchEmbed(
+        #         patch_size=patch_size,
+        #         stride=stride,
+        #         in_chans=channels,
+        #         embed_dim=dim,
+        #     )
+        #     num_patches = self.to_patch_embedding.num_patches
+        #     r = self.to_patch_embedding.H
+        # else:
+        #     self.to_patch_embedding = nn.Sequential(
+        #         Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
+        #         nn.Linear(patch_dim, dim),
+        #     )
+        #     num_patches = (image_height // patch_height) * (image_width // patch_width)
+        #     r = image_height // patch_height
  
         self.use_pos = use_pos
         if self.use_pos:
@@ -100,7 +120,7 @@ class Vin(nn.Module):
                     dim_head=dim_head, 
                     mlp_dim=mlp_dim, 
                     dropout=drop_rate, 
-                    r=r, 
+                    num_row_patches=num_row_patches, 
                     use_urpe=use_urpe, 
                     type_index=type_list[i],
                     norm_type=norm_type,

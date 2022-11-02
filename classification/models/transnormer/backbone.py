@@ -17,7 +17,7 @@ class DiagBlockAttention(nn.Module):
         num_heads=8, 
         dim_head=64, 
         dropout=0., 
-        r=7, # number of rows
+        num_row_patches=7, # number of patches in a row
         use_urpe=False,
         use_softmax=True,
         norm_type="layernorm",
@@ -32,7 +32,7 @@ class DiagBlockAttention(nn.Module):
 
         self.atten = nn.Softmax(dim = -1)
         self.dropout = nn.Dropout(dropout)
-        self.r = r
+        self.num_row_patches = num_row_patches
 
         self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
 
@@ -52,7 +52,7 @@ class DiagBlockAttention(nn.Module):
 
     def transform(self, x, r, c):
         # reshape
-        x = rearrange(x, 'b h (r c) d -> b h r c d', r=self.r)
+        x = rearrange(x, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
         # pad
         r_pad = (self.block_size - r % self.block_size) % self.block_size
         c_pad = (self.block_size - c % self.block_size) % self.block_size
@@ -76,14 +76,14 @@ class DiagBlockAttention(nn.Module):
         qkv = self.to_qkv(x).chunk(3, dim = -1)
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.num_heads), qkv)
         if self.use_urpe:
-            q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.r)
-            k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.r)
+            q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
+            k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
             q = self.urpe(q)
             k = self.urpe(k)
             q = rearrange(q, 'b h r c d -> b h (r c) d')
             k = rearrange(k, 'b h r c d -> b h (r c) d')
 
-        r = self.r
+        r = self.num_row_patches
         c = q.shape[-2] // r
         # chunk
         # b h (n g) (m e) d -> b h n m (g e) d
@@ -113,7 +113,7 @@ class NormLinearAttention(nn.Module):
         num_heads=8, 
         dim_head=64, 
         dropout=0., 
-        r=7, # number of rows
+        num_row_patches=7, # number of patches in a row
         use_urpe=False,
         norm_type="layernorm",
         act_fun="relu",
@@ -125,7 +125,7 @@ class NormLinearAttention(nn.Module):
         self.scale = dim_head ** -0.5
 
         self.dropout = nn.Dropout(dropout)
-        self.r = r
+        self.num_row_patches = num_row_patches
 
         self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
 
@@ -146,8 +146,8 @@ class NormLinearAttention(nn.Module):
         q = self.act_fun(q)
         k = self.act_fun(k)
         if self.use_urpe:
-            q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.r)
-            k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.r)
+            q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
+            k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
             q = self.urpe(q)
             k = self.urpe(k)
             q = rearrange(q, 'b h r c d -> b h (r c) d')
@@ -170,7 +170,7 @@ class Block(nn.Module):
         mlp_dim, 
         dropout=0., 
         drop_path=0., 
-        r=7, # number of rows
+        num_row_patches=7, # number of patches in a row
         use_urpe=False, 
         # add
         type_index=-1,
@@ -197,7 +197,7 @@ class Block(nn.Module):
             num_heads=num_heads,
             dim_head=dim_head,
             dropout=dropout,
-            r=r,
+            num_row_patches=num_row_patches,
             use_urpe=use_urpe,
         )
         if use_glu:
@@ -219,7 +219,7 @@ class Block(nn.Module):
         num_heads,
         dim_head,
         dropout,
-        r,
+        num_row_patches,
         use_urpe,
     ):
         if type_index == 1:
@@ -228,7 +228,7 @@ class Block(nn.Module):
                 num_heads=num_heads,
                 dim_head=dim_head,
                 dropout=dropout,
-                r=r,
+                num_row_patches=num_row_patches,
                 use_urpe=use_urpe,
                 use_softmax=use_softmax,
                 norm_type=norm_type,
@@ -241,7 +241,7 @@ class Block(nn.Module):
                 num_heads=num_heads,
                 dim_head=dim_head,
                 dropout=dropout,
-                r=r,
+                num_row_patches=num_row_patches,
                 use_urpe=use_urpe,
                 norm_type=norm_type,
                 act_fun=linear_act,
@@ -250,27 +250,5 @@ class Block(nn.Module):
     def forward(self, x):
         x = x + self.drop_path(self.token_mixer(self.token_norm(x)))
         x = x + self.drop_path(self.feature_mixer(self.feature_norm(x)))
-
-        return x
-
-class OverlapPatchEmbed(nn.Module):
-    def __init__(self, img_size=224, patch_size=16, stride=14, in_chans=3, embed_dim=192):
-        super().__init__()
-        # compute num_patches
-        padding = patch_size // 2
-        padding = pair(padding)
-        img_size = pair(img_size)
-        patch_size = pair(patch_size)
-        dilation = (1, 1)
-        self.H = int((img_size[0] + (padding[0]) * 2 - dilation[0] * (patch_size[0] - 1) - 1) / stride) + 1
-        self.W = int((img_size[1] + (padding[1]) * 2 - dilation[1] * (patch_size[1] - 1) - 1) / stride) + 1
-        self.num_patches = self.H * self.W
-        # init module
-        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=stride,
-                              padding=(padding[0], padding[1]))
-        
-    def forward(self, x):
-        x = self.proj(x)
-        x = rearrange(x, 'b e h w -> b (h w) e')
 
         return x

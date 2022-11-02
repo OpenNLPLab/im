@@ -829,6 +829,8 @@ def norm_vit_tiny_overlap_patch16_224_mix_softmax_1_elu_rmsnorm_glu(pretrained=F
     use_glu = True
     glu_act = "swish"
     glu_dim = (8 * dim // 3)
+    # patch type
+    patch_type = "overlap"
     model = Vin(
         patch_size=patch_size, 
         dim=dim, 
@@ -845,8 +847,8 @@ def norm_vit_tiny_overlap_patch16_224_mix_softmax_1_elu_rmsnorm_glu(pretrained=F
         use_glu=use_glu,
         glu_act=glu_act,
         glu_dim=glu_dim,
-        use_over_lap=True,
         stride=stride,
+        patch_type=patch_type,
         **kwargs
     )
     model.default_cfg = _cfg()
@@ -872,6 +874,8 @@ def norm_vit_tiny_overlap_patch16_224_mix_relu_elu_rmsnorm_glu(pretrained=False,
     use_glu = True
     glu_act = "swish"
     glu_dim = (8 * dim // 3)
+    # patch type
+    patch_type = "overlap"
     model = Vin(
         patch_size=patch_size, 
         dim=dim, 
@@ -888,8 +892,8 @@ def norm_vit_tiny_overlap_patch16_224_mix_relu_elu_rmsnorm_glu(pretrained=False,
         use_glu=use_glu,
         glu_act=glu_act,
         glu_dim=glu_dim,
-        use_over_lap=True,
         stride=stride,
+        patch_type=patch_type,
         **kwargs
     )
     model.default_cfg = _cfg()
@@ -1221,5 +1225,93 @@ def norm_vit_small_patch16_224_mix_relu_elu_rmsnorm_glu_h12_no_block(pretrained=
     model.default_cfg = _cfg()
     return model
 ##### no block
+
+##### no block conv patch
+@register_model
+def norm_vit_small_conv_patch16_224_mix_softmax_1_elu_rmsnorm_glu_h12_no_block(pretrained=False, **kwargs):
+    patch_size = 16
+    dim = 384
+    depth = 12
+    num_heads = 12
+    mlp_dim = 4 * dim
+    dropout = 0.0
+    use_urpe = True
+    type_list = [1 for i in range(depth // 2)] + [2 for i in range(depth // 2)]
+    norm_type = "simplermsnorm"
+    use_softmax = True
+    block_act = "relu"
+    block_size = 224 // patch_size
+    linear_act = "1+elu"
+    # glu
+    use_glu = True
+    glu_act = "swish"
+    glu_dim = (8 * dim // 3)
+    # patch type
+    patch_type = "conv"
+    model = Vin(
+        patch_size=patch_size, 
+        dim=dim, 
+        depth=depth, 
+        num_heads=num_heads, 
+        mlp_dim=mlp_dim,
+        use_urpe=use_urpe,
+        type_list=type_list,
+        use_softmax=use_softmax,
+        block_act=block_act,
+        block_size=block_size,
+        linear_act=linear_act,
+        norm_type=norm_type,
+        use_glu=use_glu,
+        glu_act=glu_act,
+        glu_dim=glu_dim,
+        patch_type=patch_type,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+    return model
+
+@register_model
+def norm_vit_small_conv_patch16_224_mix_relu_elu_rmsnorm_glu_h12_no_block(pretrained=False, **kwargs):
+    patch_size = 16
+    dim = 384
+    depth = 12
+    num_heads = 12
+    mlp_dim = 4 * dim
+    dropout = 0.0
+    use_urpe = True
+    type_list = [1 for i in range(depth // 2)] + [2 for i in range(depth // 2)]
+    norm_type = "simplermsnorm"
+    use_softmax = False
+    block_act = "relu"
+    block_size = 224 // patch_size
+    linear_act = "elu"
+    # glu
+    use_glu = True
+    glu_act = "swish"
+    glu_dim = (8 * dim // 3)
+    # patch type
+    patch_type = "conv"
+    model = Vin(
+        patch_size=patch_size, 
+        dim=dim, 
+        depth=depth, 
+        num_heads=num_heads, 
+        mlp_dim=mlp_dim,
+        use_urpe=use_urpe,
+        type_list=type_list,
+        use_softmax=use_softmax,
+        block_act=block_act,
+        block_size=block_size,
+        linear_act=linear_act,
+        norm_type=norm_type,
+        use_glu=use_glu,
+        glu_act=glu_act,
+        glu_dim=glu_dim,
+        patch_type=patch_type,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+    return model
+##### no block conv patch
 ########## Deit small
 ############### model_vit
