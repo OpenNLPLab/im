@@ -229,7 +229,6 @@ def logging_info(string):
         logger.info(string)
 
 def init_distributed_mode(args):
-    logging_info("test")
     # 本地多卡
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         args.rank = int(os.environ["RANK"])
