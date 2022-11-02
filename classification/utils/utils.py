@@ -7,6 +7,7 @@ Mostly copy-paste from torchvision references.
 """
 import datetime
 import io
+import logging
 import os
 import socket
 import subprocess
@@ -17,6 +18,8 @@ import numpy as np
 import torch
 import torch.distributed as dist
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger("dist init")
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
