@@ -19,21 +19,12 @@ class OverlapPatchEmbed(nn.Module):
         super().__init__()
         # compute num_patches
         padding = patch_size // 2
-        # padding = pair(padding)
-        # img_size = pair(img_size)
-        # patch_size = pair(patch_size)
-        # self.H = int((img_size[0] + (padding[0]) * 2 - dilation[0] * (patch_size[0] - 1) - 1) / stride) + 1
-        # self.W = int((img_size[1] + (padding[1]) * 2 - dilation[1] * (patch_size[1] - 1) - 1) / stride) + 1
-        # self.num_patches = self.H * self.W
         self.num_row_patches = compute_resulotion(
             size=img_size, 
             padding=padding, 
             kernel_size=patch_size, 
             stride=stride,
         )
-        # init module
-        # self.proj = nn.Conv2d(in_chans, dim, kernel_size=patch_size, stride=stride,
-        #                       padding=(padding[0], padding[1]))
         self.proj = nn.Conv2d(in_chans, dim, kernel_size=patch_size, stride=stride,
                               padding=(padding, padding))
         

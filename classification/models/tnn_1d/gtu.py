@@ -48,7 +48,7 @@ class Gtu(nn.Module):
 
         d1 = int(self.expand_ratio * embed_dim)
         d1 = (d1 // self.num_heads) * self.num_heads
-        d2 = embed_dim
+        # d2 = embed_dim
         self.head_dim = d1 // num_heads
         # d^2
         self.v_proj = nn.Linear(embed_dim, d1, bias=bias)
@@ -107,30 +107,50 @@ class Gtu(nn.Module):
         
         # norm
         self.norm_type = norm_type
-        self.pre_norm = get_norm_fn(self.norm_type)(d2)
+        # self.pre_norm = get_norm_fn(self.norm_type)(d2)
         
         self.use_norm = use_norm
         if self.use_norm:
             self.norm = get_norm_fn(self.norm_type)(d1)
     
     # col + row
+    # def forward(self, x, H, W):
+    #     # x: b, h, w, d
+    #     num_heads = self.num_heads
+
+    #     shortcut, x = x, self.pre_norm(x)
+    #     if self.resi_param:
+    #         shortcut = shortcut * self.d
+    #     u = self.act(self.u_proj(x))
+    #     v = self.act(self.v_proj(x))
+    #     # reshape
+    #     v = rearrange(v, 'b n m (h d) -> b h n m d', h=num_heads)
+    #     output = self.toep2(v, dim=-3, normalize=self.normalize) + self.toep1(v, dim=-2, normalize=self.normalize)
+    #     output = rearrange(output, 'b h n m d -> b n m (h d)')
+    #     output = u * output
+    #     if self.use_norm:
+    #         output = self.norm(output)
+            
+    #     output = self.o(output) + shortcut
+        
+    #     return output
+
     def forward(self, x, H, W):
         # x: b, h, w, d
         num_heads = self.num_heads
 
-        shortcut, x = x, self.pre_norm(x)
         if self.resi_param:
             shortcut = shortcut * self.d
         u = self.act(self.u_proj(x))
         v = self.act(self.v_proj(x))
         # reshape
-        v = rearrange(v, 'b H W (h d) -> b h H W d', h=num_heads)
+        v = rearrange(v, 'b n m (h d) -> b h n m d', h=num_heads)
         output = self.toep2(v, dim=-3, normalize=self.normalize) + self.toep1(v, dim=-2, normalize=self.normalize)
-        output = rearrange(output, 'b h H W d -> b H W (h d)')
+        output = rearrange(output, 'b h n m d -> b n m (h d)')
         output = u * output
         if self.use_norm:
             output = self.norm(output)
             
-        output = self.o(output) + shortcut
+        output = self.o(output)
         
         return output
