@@ -214,6 +214,35 @@ def tno_vit_e3g1_large_rpe_l1_90_prenorm(pretrained=False, **kwargs):
     model.default_cfg = _cfg()
 
     return model
+
+@register_model
+def tno_vit_e3g1_large_rpe_l1_90_prenorm_p14(pretrained=False, **kwargs):
+    dim = 512
+    glu_dim = dim
+    rpe_dim = 48
+    num_heads = 1
+    depth = 12
+    max_l = 224 // 16
+    model = TNNVit(
+        patch_size=14, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embdding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=1,
+        use_decay=True,
+        gamma=0.9,
+        prenorm=True,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
 ########## Deit large
 
 ########## Deit big
