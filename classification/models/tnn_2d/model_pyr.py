@@ -3,13 +3,15 @@ import math
 import torch
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
-from models.helpers import GLU, SimpleRMSNorm, pair, print_params
+from models.helpers import (GLU, SimpleRMSNorm, get_downsample_fn, pair,
+                            print_params)
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
 from torch import nn
 
-from .backbone import Block, DownSample
+from ..helpers import get_patch_embedding
+from .backbone import Block
 from .gtu_2d import Gtu2d
 
 
@@ -32,12 +34,13 @@ class BlockStage(nn.Module):
         m,
         use_downsample=True,
         prenorm=False,
+        # downsample
+        downsample_type="default", # choose from ["ii", "default"]
     ):
         super().__init__()
         self.layers = nn.ModuleList([])
         block = []
         for _ in range(depth):
-            # block.append(
             self.layers.append(
                 Block(
                     dim=dim, 
@@ -58,7 +61,7 @@ class BlockStage(nn.Module):
             )
         self.use_downsample = use_downsample
         if self.use_downsample:
-            self.downsample = DownSample(dim)
+            self.downsample = get_downsample_fn(downsample_type)(dim)
         self.H = n
         self.W = m
         
@@ -69,7 +72,6 @@ class BlockStage(nn.Module):
             x = self.downsample(x)
         
         return x
-        
 
 class TNN2DPyr(nn.Module):
     def __init__(
@@ -98,6 +100,14 @@ class TNN2DPyr(nn.Module):
         drop_rate=0.,
         drop_path_rate=0.,
         prenorm=False,
+        # patch
+        patch_type="mlp", # choose from ["mlp", "overlap", "conv", "stem"]
+        stride=-1,
+        conv_kernel_size=3, 
+        conv_stride=2, 
+        conv_padding=1,
+        # downsample
+        downsample_type="default",
     ):
         super().__init__()
         # get local varables
@@ -115,10 +125,22 @@ class TNN2DPyr(nn.Module):
         self.H = image_height // patch_height
         self.W = image_width // patch_width
 
-        self.to_patch_embedding = nn.Sequential(
-            Rearrange('b c (h p1) (w p2) -> b h w (p1 p2 c)', p1 = patch_height, p2 = patch_width),
-            nn.Linear(patch_dim, embed_dim),
+        self.to_patch_embedding, num_patches, num_row_patches = get_patch_embedding(
+            patch_type=patch_type, 
+            dim=embed_dim,
+            # mlp
+            patch_dim=patch_dim,
+            # overlap
+            patch_size=patch_size,
+            stride=stride,
+            # conv
+            conv_kernel_size=conv_kernel_size, 
+            conv_stride=conv_stride, 
+            conv_padding=conv_padding,
+            # 2d
+            use_2d=True
         )
+
         self.use_pos = use_pos
         if self.use_pos:
             self.pos_embedding = nn.Parameter(torch.randn(1, self.H, self.W, embed_dim))
@@ -146,6 +168,7 @@ class TNN2DPyr(nn.Module):
                 m=m,
                 use_downsample=flag,
                 prenorm=prenorm,
+                downsample_type=downsample_type,
             )
             self.block_stages.append(block_stage)
             if flag:

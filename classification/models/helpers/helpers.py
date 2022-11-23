@@ -5,6 +5,7 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from torch import nn
 
+from .downsample import *
 from .normlization import SimpleRMSNorm
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -36,6 +37,12 @@ def get_norm_fn(norm_type):
         return SimpleRMSNorm
     else:
         return nn.LayerNorm
+    
+def get_downsample_fn(downsample_type):
+    if downsample_type == "ii":
+        return DownSampleInternImage
+    else:
+        return DownSample
 
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)

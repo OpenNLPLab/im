@@ -49,7 +49,6 @@ class Block(nn.Module):
         # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         # v2 add
-        # self.norm = SimpleRMSNorm(dim)
         self.token_norm = get_norm_fn(norm_type)(dim)
         self.feature_norm = get_norm_fn(norm_type)(dim)
         
@@ -84,30 +83,5 @@ class Block(nn.Module):
     def forward_prenorm(self, x, H, W):
         x = x + self.drop_path(self.token_mixer(self.token_norm(x), H, W))
         x = x + self.drop_path(self.feature_mixer(self.feature_norm(x)))
-
-        return x
-
-
-# ref: https://github.com/microsoft/Swin-Transformer/blob/main/models/swin_transformer.py
-class DownSample(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.dim = dim
-        self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
-        self.norm = SimpleRMSNorm(4 * dim)
-
-    def forward(self, x):
-        """
-        x: B, H, W, C
-        """
-        B, H, W, C = x.shape
-        assert H % 2 == 0 and W % 2 == 0, f"x size ({H}*{W}) are not even."
-        H1 = H // 2
-        W1 = W // 2
-        
-        x = rearrange(x, 'b (k H) W d -> b H W (k d)', k=2, H=H1)
-        x = rearrange(x, 'b H (k W) d -> b H W (k d)', k=2, W=W1)
-        x = self.norm(x)
-        x = self.reduction(x)
 
         return x

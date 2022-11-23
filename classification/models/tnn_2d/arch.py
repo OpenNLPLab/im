@@ -529,4 +529,37 @@ def tnn_2d_pyr_tiny_rpe_v8_l1_prenorm(pretrained=False, **kwargs):
 
     return model
 ########## Pyramid tiny
+
+########## InterImage
+@register_model
+def tnn_2d_ii_small_rpe_prenorm(pretrained=False, **kwargs):
+    patch_size = 4
+    dim = 64
+    glu_dim = dim
+    rpe_dim = 16
+    num_heads = 1
+    prenorm = True
+    patch_type = "stem"
+    downsample_type = "ii"
+    model = TNN2DPyr(
+        patch_size=patch_size, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depths=[4, 4, 18, 4], 
+        use_pos=False,
+        rpe_layers=1,
+        prenorm=prenorm,
+        patch_type=patch_type,
+        downsample_type=downsample_type,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
+########## InterImage
 ############### model_pyr
