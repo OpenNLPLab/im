@@ -174,6 +174,7 @@ class TNN2DPyr(nn.Module):
             if flag:
                 embed_dim *= 2
                 glu_dim *= 2
+                rpe_embedding *= 2
                 n /= 2
                 m /= 2
 
