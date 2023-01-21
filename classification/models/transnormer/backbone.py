@@ -2,7 +2,7 @@
 import torch
 import torch.nn.functional as F
 from einops import rearrange, repeat
-from models.helpers import (FFN, GLU, SimpleRMSNorm, Urpe, get_activation_fn,
+from models.helpers import (FFN, GLU, SimpleRMSNorm, Lrpe, get_activation_fn,
                             get_norm_fn)
 from torch import nn
 
@@ -18,7 +18,7 @@ class DiagBlockAttention(nn.Module):
         dim_head=64, 
         dropout=0., 
         num_row_patches=7, # number of patches in a row
-        use_urpe=False,
+        use_lrpe=False,
         use_softmax=True,
         norm_type="layernorm",
         block_size=4,
@@ -41,9 +41,9 @@ class DiagBlockAttention(nn.Module):
             nn.Dropout(dropout)
         )
 
-        self.use_urpe = use_urpe
-        if self.use_urpe:
-            self.urpe = Urpe(core_matrix=1, p_matrix=3, embedding_dim=dim_head, theta_learned=True, dims=[2, 3])
+        self.use_lrpe = use_lrpe
+        if self.use_lrpe:
+            self.lrpe = Lrpe(core_matrix=1, p_matrix=3, embedding_dim=dim_head, theta_learned=True, dims=[2, 3])
         self.use_softmax = use_softmax
         if not self.use_softmax:
             self.norm = get_norm_fn(norm_type)(inner_dim)
@@ -75,11 +75,11 @@ class DiagBlockAttention(nn.Module):
     def forward(self, x):
         qkv = self.to_qkv(x).chunk(3, dim = -1)
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.num_heads), qkv)
-        if self.use_urpe:
+        if self.use_lrpe:
             q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
             k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
-            q = self.urpe(q)
-            k = self.urpe(k)
+            q = self.lrpe(q)
+            k = self.lrpe(k)
             q = rearrange(q, 'b h r c d -> b h (r c) d')
             k = rearrange(k, 'b h r c d -> b h (r c) d')
 
@@ -114,7 +114,7 @@ class NormLinearAttention(nn.Module):
         dim_head=64, 
         dropout=0., 
         num_row_patches=7, # number of patches in a row
-        use_urpe=False,
+        use_lrpe=False,
         norm_type="layernorm",
         act_fun="relu",
     ):
@@ -134,9 +134,9 @@ class NormLinearAttention(nn.Module):
             nn.Dropout(dropout)
         )
 
-        self.use_urpe = use_urpe
-        if self.use_urpe:
-            self.urpe = Urpe(core_matrix=1, p_matrix=3, embedding_dim=dim_head, theta_learned=True, dims=[2, 3])
+        self.use_lrpe = use_lrpe
+        if self.use_lrpe:
+            self.lrpe = Lrpe(core_matrix=1, p_matrix=3, embedding_dim=dim_head, theta_learned=True, dims=[2, 3])
         self.norm = get_norm_fn(norm_type)(inner_dim)
         self.act_fun = get_activation_fn(act_fun)
 
@@ -145,11 +145,11 @@ class NormLinearAttention(nn.Module):
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.num_heads), qkv)
         q = self.act_fun(q)
         k = self.act_fun(k)
-        if self.use_urpe:
+        if self.use_lrpe:
             q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
             k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
-            q = self.urpe(q)
-            k = self.urpe(k)
+            q = self.lrpe(q)
+            k = self.lrpe(k)
             q = rearrange(q, 'b h r c d -> b h (r c) d')
             k = rearrange(k, 'b h r c d -> b h (r c) d')
 
@@ -171,7 +171,7 @@ class Block(nn.Module):
         dropout=0., 
         drop_path=0., 
         num_row_patches=7, # number of patches in a row
-        use_urpe=False, 
+        use_lrpe=False, 
         # add
         type_index=-1,
         norm_type="simplermsnorm",
@@ -198,7 +198,7 @@ class Block(nn.Module):
             dim_head=dim_head,
             dropout=dropout,
             num_row_patches=num_row_patches,
-            use_urpe=use_urpe,
+            use_lrpe=use_lrpe,
         )
         if use_glu:
             self.feature_mixer = GLU(dim, glu_dim, glu_act)
@@ -220,7 +220,7 @@ class Block(nn.Module):
         dim_head,
         dropout,
         num_row_patches,
-        use_urpe,
+        use_lrpe,
     ):
         if type_index == 1:
             return DiagBlockAttention(
@@ -229,7 +229,7 @@ class Block(nn.Module):
                 dim_head=dim_head,
                 dropout=dropout,
                 num_row_patches=num_row_patches,
-                use_urpe=use_urpe,
+                use_lrpe=use_lrpe,
                 use_softmax=use_softmax,
                 norm_type=norm_type,
                 block_size=block_size,
@@ -242,7 +242,7 @@ class Block(nn.Module):
                 dim_head=dim_head,
                 dropout=dropout,
                 num_row_patches=num_row_patches,
-                use_urpe=use_urpe,
+                use_lrpe=use_lrpe,
                 norm_type=norm_type,
                 act_fun=linear_act,
             )

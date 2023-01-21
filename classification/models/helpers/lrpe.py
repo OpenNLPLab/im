@@ -11,7 +11,7 @@ import torch.nn as nn
 from .helpers import print_params
 
 
-class Urpe(nn.Module):
+class Lrpe(nn.Module):
     def __init__(self, core_matrix, p_matrix, max_positions=512, embedding_dim=768, 
                  theta_type="a", theta_learned=False, householder_learned=False,
                  dims=[1]):
@@ -160,9 +160,15 @@ class Urpe(nn.Module):
 
         return x
 
-    def do_permutation(self, x):
-        b, l, e = x.shape
-        x = x.gather(-1, self.permutation[:, :l, :].expand_as(x))
+    # def do_permutation(self, x):
+    #     b, l, e = x.shape
+    #     x = x.gather(-1, self.permutation[:, :l, :].expand_as(x))
+
+    #     return x
+    def do_permutation(self, x, dim):
+        l = x.shape[dim]
+        per = torch.index_select(self.permutation, 1, torch.tensor(torch.arange(l), dtype=torch.long).to(x.device))
+        x = x.gather(-1, per.expand_as(x))
 
         return x
 
@@ -184,6 +190,8 @@ class Urpe(nn.Module):
 
     def mix_transform(self, x, e, op_dim):
         assert e % 2 == 0
+        if op_dim < 0:
+            op_dim += len(x.shape)
         # b, l, d = x.shape
         # l, d = x.shape[-2], x.shape[-1]
         l = x.shape[op_dim]
@@ -232,25 +240,63 @@ class Urpe(nn.Module):
 
         return x_transform
 
-    def complex_exp(self, x):
-        b, l, e = x.shape
+    # def complex_exp(self, x):
+    #     b, l, e = x.shape
+    #     if self.theta_learned:
+    #         theta = self.theta
+    #     else:
+    #         if self.theta_type == "a":
+    #             theta = 10000 ** (-2 / e * torch.arange(e))
+    #         theta = theta.reshape(1, 1, -1).to(x.device)
+    #     matrix = theta * torch.arange(l).reshape(1, -1, 1).to(x.device)
+    #     sin_cos = torch.complex(torch.cos(matrix),torch.sin(matrix)).to(x.device)
+    #     # sin_cos = torch.complex(torch.cos(theta), torch.sin(theta)).to(x)
+    #     # x = torch.complex(x * torch.cos(matrix), x * torch.sin(matrix))
+    #     if x.dtype != torch.cfloat:
+    #         x = self.element_wise_complex_real(x, sin_cos)
+    #     else:
+    #         x = self.element_wise_complex(x, sin_cos)
+
+    #     return x
+    def complex_exp(self, x, dim):
+        if dim < 0:
+            dim += len(x.shape)
+        l = x.shape[dim]
         if self.theta_learned:
             theta = self.theta
         else:
+            e = x.shape[-1]
             if self.theta_type == "a":
                 theta = 10000 ** (-2 / e * torch.arange(e))
-            theta = theta.reshape(1, 1, -1).to(x.device)
-        matrix = theta * torch.arange(l).reshape(1, -1, 1).to(x.device)
-        sin_cos = torch.complex(torch.cos(matrix),torch.sin(matrix)).to(x.device)
-        # sin_cos = torch.complex(torch.cos(theta), torch.sin(theta)).to(x)
-        # x = torch.complex(x * torch.cos(matrix), x * torch.sin(matrix))
-        x = self.element_wise_complex(x, sin_cos)
+            theta = theta.to(x.device)
+        # 调整为相同形状
+        ### ...e
+        for i in range(len(x.shape) - 1):
+            theta = theta.unsqueeze(0)
+        index = torch.arange(l).to(x.device)
+        ### ..., l, 1
+        # 在dim维度上做index
+        m = len(x.shape)
+        for _ in range(dim):
+            index = index.unsqueeze(0)
+        for _ in range(m - dim - 1):
+            index = index.unsqueeze(-1)
+        # ..., l, e
+        matrix = theta * index
+        sin_cos = torch.complex(torch.cos(matrix), torch.sin(matrix)).to(x.device)
+        if x.dtype != torch.cfloat:
+            x = self.element_wise_complex_real(x, sin_cos)
+        else:
+            x = self.element_wise_complex(x, sin_cos)
 
         return x
 
     # https://stackoverflow.com/questions/63855692/matrix-multiplication-for-complex-numbers-in-pytorch
     def element_wise_complex(self, t1, t2):
         return torch.complex(t1.real * t2.real - t1.imag * t2.imag, t1.real * t2.imag + t1.imag * t2.real)
+
+    def element_wise_complex_real(self, t1, t2):
+        return torch.complex(t1 * t2.real, t1 * t2.imag)
 
     def dct(self, x):
         """

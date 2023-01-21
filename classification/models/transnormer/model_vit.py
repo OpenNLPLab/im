@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
-from models.helpers import (FFN, GLU, SimpleRMSNorm, Urpe, get_activation_fn,
+from models.helpers import (FFN, GLU, SimpleRMSNorm, Lrpe, get_activation_fn,
                             get_norm_fn, pair, print_params)
 from timm.models.registry import register_model
 from timm.models.vision_transformer import _cfg
@@ -31,7 +31,7 @@ class Vin(nn.Module):
         emb_dropout=0., 
         drop_path_rate=0.,
         # add
-        use_urpe=False, 
+        use_lrpe=False, 
         # add
         type_list=[],
         norm_type="simplermsnorm",
@@ -121,7 +121,7 @@ class Vin(nn.Module):
                     mlp_dim=mlp_dim, 
                     dropout=drop_rate, 
                     num_row_patches=num_row_patches, 
-                    use_urpe=use_urpe, 
+                    use_lrpe=use_lrpe, 
                     type_index=type_list[i],
                     norm_type=norm_type,
                     use_softmax=use_softmax,

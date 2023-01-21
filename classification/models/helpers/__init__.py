@@ -6,4 +6,6 @@ from .helpers import (get_activation_fn, get_downsample_fn, get_norm_fn, pair,
                       print_params)
 from .normlization import SimpleRMSNorm
 from .patch_embed import get_patch_embedding
-from .urpe import Urpe
+from .lrpe import Lrpe
+from .rope import rope
+from .spe import SineSPE, SPEFilter
