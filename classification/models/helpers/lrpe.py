@@ -36,7 +36,7 @@ class Lrpe(nn.Module):
             logging.info("mixed")
         elif self.core_matrix == 3:
             logging.info("permutation")
-            permutation = self.get_permutation(max_positions, embedding_dim)
+            permutation = self.get_permutation(max_positions, embedding_dim).squeeze(0)
             logging.info(permutation.shape)
             self.register_buffer("permutation", permutation)
         elif self.core_matrix == 4:
@@ -127,7 +127,7 @@ class Lrpe(nn.Module):
 
     def get_permutation(self, max_positions, embedding_dim):
         permutation = torch.randperm(embedding_dim).reshape(1, -1)
-        # 1 * d
+        # 1, d
         expanded = [torch.arange(embedding_dim).unsqueeze(0)]
         for _ in range(max_positions - 1):
             previous = expanded[-1]
@@ -165,9 +165,18 @@ class Lrpe(nn.Module):
     #     x = x.gather(-1, self.permutation[:, :l, :].expand_as(x))
 
     #     return x
+    # need change
     def do_permutation(self, x, dim):
+        m = len(x.shape)
+        if dim < 0:
+            dim += m
         l = x.shape[dim]
-        per = torch.index_select(self.permutation, 1, torch.tensor(torch.arange(l), dtype=torch.long).to(x.device))
+        # n, d
+        per = torch.index_select(self.permutation, 0, torch.tensor(torch.arange(l), dtype=torch.long).to(x.device))
+        for _ in range(dim):
+            per = per.unsqueeze(0)
+        for _ in range(m - dim - 2):
+            per = per.unsqueeze(-2)
         x = x.gather(-1, per.expand_as(x))
 
         return x

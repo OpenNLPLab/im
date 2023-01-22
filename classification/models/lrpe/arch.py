@@ -151,3 +151,57 @@ def linear_vit_small_l_unl(pretrained=False, **kwargs):
     model.default_cfg = _cfg()
     return model
 ##### lrpe
+
+##### rope
+@register_model
+def linear_vit_small_rope(pretrained=False, **kwargs):
+    patch_size = 16
+    dim = 384
+    depth = 12
+    num_heads = 6
+    mlp_dim = 4 * dim
+    dropout = 0.0
+    act_fun = "1+elu"
+    # rope
+    use_rope = True
+    model = Vit(
+        patch_size=patch_size, 
+        dim=dim, 
+        depth=depth, 
+        num_heads=num_heads, 
+        mlp_dim=mlp_dim,
+        act_fun=act_fun,
+        # rope
+        use_rope=use_rope,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+    return model
+##### rope
+
+##### permutate
+@register_model
+def linear_vit_small_per(pretrained=False, **kwargs):
+    patch_size = 16
+    dim = 384
+    depth = 12
+    num_heads = 6
+    mlp_dim = 4 * dim
+    dropout = 0.0
+    act_fun = "1+elu"
+    # per
+    use_permutate = True
+    model = Vit(
+        patch_size=patch_size, 
+        dim=dim, 
+        depth=depth, 
+        num_heads=num_heads, 
+        mlp_dim=mlp_dim,
+        act_fun=act_fun,
+        # permutate
+        use_permutate=use_permutate,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+    return model
+##### permutate

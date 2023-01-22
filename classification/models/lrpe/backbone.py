@@ -79,10 +79,23 @@ class LinearAttention(nn.Module):
             self.spe_filter = SPEFilter(gated=True, code_shape=self.spe_encoder.code_shape)
         self.use_permutate = use_permutate
         if self.use_permutate:
-            raw_permutation = self.generate_random_permutation(self.num_heads, self.kdim // self.num_heads, 0xdeadbeefdeadbeef)
-            permutation = self.expand_permutation(max_seq_len, raw_permutation)
-            self.register_buffer("permutation", permutation.unsqueeze(0))
-            self.register_buffer("ratio", torch.sigmoid(torch.arange(self.num_heads) / self.num_heads * 3 + 2))
+            raw_permutation = self.generate_random_permutation(self.num_heads, self.head_dim, 0xdeadbeefdeadbeef)
+            max_seq_len = num_row_patches
+            permutation = self.expand_permutation(max_seq_len, raw_permutation).unsqueeze(0)
+            self.register_buffer("permutation", permutation)
+            self.register_buffer("ratio", torch.sigmoid(torch.arange(self.num_heads) / self.num_heads * 3 + 2).reshape(1, self.num_heads, 1, 1, 1))
+        self.use_rope = use_rope
+        if self.use_rope:
+            self.rope = Lrpe(
+                core_matrix=1, 
+                p_matrix=1, 
+                max_positions=num_row_patches,
+                embedding_dim=self.head_dim, 
+                theta_type="a", 
+                theta_learned=False, 
+                householder_learned=False,
+                dims=[-2, -3],
+            )
         
         self.act_fun = get_activation_fn(act_fun)
 
@@ -122,6 +135,40 @@ class LinearAttention(nn.Module):
                 k = torch.cat([k.real, k.imag], dim=-1)
             q = rearrange(q, 'b h r c d -> b h (r c) d')
             k = rearrange(k, 'b h r c d -> b h (r c) d')
+            
+        if self.use_rope:
+            q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
+            k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
+            q = self.rope(q)
+            k = self.rope(k)
+            q = rearrange(q, 'b h r c d -> b h (r c) d')
+            k = rearrange(k, 'b h r c d -> b h (r c) d')
+            
+        if self.use_permutate:
+            q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
+            k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
+            for dim in [-2, -3]:
+                m = len(q.shape)
+                if dim < 0:
+                    dim += m
+                l = q.shape[dim]
+                # h, n, d -> 1, h, n, d
+                per = torch.index_select(self.permutation, -2, torch.tensor(torch.arange(l), dtype=torch.long).to(x.device))
+                per = per.unsqueeze(m - dim)
+                q = q.gather(-1, per.expand_as(q))
+                k = k.gather(-1, per.expand_as(k))
+                # index
+                index = torch.arange(l).to(x.device)
+                for _ in range(dim):
+                    index = index.unsqueeze(0)
+                for _ in range(m - dim - 1):
+                    index = index.unsqueeze(-1)
+                q *= (self.ratio ** index)
+                k *= ((1 / self.ratio) ** index)
+            # change shape
+            q = rearrange(q, 'b h r c d -> b h (r c) d')
+            k = rearrange(k, 'b h r c d -> b h (r c) d')
+            
 
         if self.use_lrpe:
             kv = torch.einsum('...nm,...nd->...md', k, v)
