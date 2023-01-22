@@ -208,7 +208,7 @@ def linear_vit_small_per(pretrained=False, **kwargs):
 
 ##### spe
 @register_model
-def linear_vit_small_per(pretrained=False, **kwargs):
+def linear_vit_small_spe(pretrained=False, **kwargs):
     patch_size = 16
     dim = 384
     depth = 12
