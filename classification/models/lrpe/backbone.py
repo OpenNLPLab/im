@@ -96,6 +96,7 @@ class LinearAttention(nn.Module):
                 householder_learned=False,
                 dims=[-2, -3],
             )
+            self.layer_norm = nn.LayerNorm(inner_dim)
         
         self.act_fun = get_activation_fn(act_fun)
 
@@ -188,7 +189,7 @@ class LinearAttention(nn.Module):
             q = rearrange(q, 'b h r c d -> b h (r c) d')
             k = rearrange(k, 'b h r c d -> b h (r c) d')
 
-        if self.use_lrpe:
+        if self.use_lrpe or self.use_rope:
             kv = torch.einsum('...nm,...nd->...md', k, v)
             qkv = torch.einsum('...nm,...md->...nd', q, kv)
             out = rearrange(qkv, 'b h n d -> b n (h d)')
