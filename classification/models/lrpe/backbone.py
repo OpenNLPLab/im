@@ -169,6 +169,24 @@ class LinearAttention(nn.Module):
             q = rearrange(q, 'b h r c d -> b h (r c) d')
             k = rearrange(k, 'b h r c d -> b h (r c) d')
             
+        if self.use_spe:
+            # reshape
+            q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
+            k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
+            b, h, r, c, d = q.shape
+            # dim = -2
+            q, k = map(lambda t: rearrange(t, 'b h r c d -> c (b r) h d'), [q, k])
+            pos_codes = self.spe_encoder(q.shape[:2])  # pos_codes is a tuple (qbar, kbar)
+            q, k = self.spe_filter(q, k, pos_codes)
+            q, k = map(lambda t: rearrange(t, 'c (b r) h d -> b h r c d', h=h, r=r), [q, k])
+            # dim = -3
+            q, k = map(lambda t: rearrange(t, 'b h r c d -> r (b c) h d'), [q, k])
+            pos_codes = self.spe_encoder(q.shape[:2])  # pos_codes is a tuple (qbar, kbar)
+            q, k = self.spe_filter(q, k, pos_codes)
+            q, k = map(lambda t: rearrange(t, 'r (b c) h d -> b h r c d', h=h, c=c), [q, k])
+            # reshape
+            q = rearrange(q, 'b h r c d -> b h (r c) d')
+            k = rearrange(k, 'b h r c d -> b h (r c) d')
 
         if self.use_lrpe:
             kv = torch.einsum('...nm,...nd->...md', k, v)

@@ -205,3 +205,30 @@ def linear_vit_small_per(pretrained=False, **kwargs):
     model.default_cfg = _cfg()
     return model
 ##### permutate
+
+##### spe
+@register_model
+def linear_vit_small_per(pretrained=False, **kwargs):
+    patch_size = 16
+    dim = 384
+    depth = 12
+    num_heads = 6
+    mlp_dim = 4 * dim
+    dropout = 0.0
+    act_fun = "1+elu"
+    # spe
+    use_spe = True
+    model = Vit(
+        patch_size=patch_size, 
+        dim=dim, 
+        depth=depth, 
+        num_heads=num_heads, 
+        mlp_dim=mlp_dim,
+        act_fun=act_fun,
+        # spe
+        use_spe=use_spe,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+    return model
+##### spe
