@@ -167,16 +167,19 @@ class Lrpe(nn.Module):
     #     return x
     # need change
     def do_permutation(self, x, dim):
+        # print(dim)
         m = len(x.shape)
         if dim < 0:
             dim += m
         l = x.shape[dim]
         # n, d
         per = torch.index_select(self.permutation, 0, torch.tensor(torch.arange(l), dtype=torch.long).to(x.device))
+        # print(per.shape, self.permutation.shape)
         for _ in range(dim):
             per = per.unsqueeze(0)
         for _ in range(m - dim - 2):
             per = per.unsqueeze(-2)
+        # print(per.shape, x.shape)
         x = x.gather(-1, per.expand_as(x))
 
         return x

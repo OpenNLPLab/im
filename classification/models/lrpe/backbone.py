@@ -96,7 +96,6 @@ class LinearAttention(nn.Module):
                 householder_learned=False,
                 dims=[-2, -3],
             )
-            self.layer_norm = nn.LayerNorm(inner_dim)
         
         self.act_fun = get_activation_fn(act_fun)
 
@@ -138,6 +137,8 @@ class LinearAttention(nn.Module):
             k = rearrange(k, 'b h r c d -> b h (r c) d')
             
         if self.use_rope:
+            q1 = q
+            k1 = k
             q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
             k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
             q = self.rope(q)
@@ -146,6 +147,8 @@ class LinearAttention(nn.Module):
             k = rearrange(k, 'b h r c d -> b h (r c) d')
             
         if self.use_permutate:
+            q1 = q
+            k1 = k
             q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
             k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
             for dim in [-2, -3]:
@@ -171,6 +174,8 @@ class LinearAttention(nn.Module):
             k = rearrange(k, 'b h r c d -> b h (r c) d')
             
         if self.use_spe:
+            q1 = q
+            k1 = k
             # reshape
             q = rearrange(q, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
             k = rearrange(k, 'b h (r c) d -> b h r c d', r=self.num_row_patches)
@@ -189,14 +194,17 @@ class LinearAttention(nn.Module):
             q = rearrange(q, 'b h r c d -> b h (r c) d')
             k = rearrange(k, 'b h r c d -> b h (r c) d')
 
-        if self.use_lrpe or self.use_rope:
+        if self.use_lrpe:
             kv = torch.einsum('...nm,...nd->...md', k, v)
             qkv = torch.einsum('...nm,...md->...nd', q, kv)
             out = rearrange(qkv, 'b h n d -> b n (h d)')
             out = self.layer_norm(out)
         else:
             kv = torch.einsum('...nm,...nd->...md', k, v)
-            z = 1 / torch.clamp_min(torch.einsum('...ld,...d->...l', q, torch.sum(k, axis=-2)), eps)
+            if self.use_permutate or self.use_rope or self.use_spe:
+                z = 1 / torch.clamp_min(torch.einsum('...ld,...d->...l', q1, torch.sum(k1, axis=-2)), eps)
+            else:
+                z = 1 / torch.clamp_min(torch.einsum('...ld,...d->...l', q, torch.sum(k, axis=-2)), eps)
             out = torch.einsum('...ld,...dm,...l->...lm', q, kv, z)
             out = rearrange(out, 'b h n d -> b n (h d)')
 
