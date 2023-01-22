@@ -83,7 +83,7 @@ class LinearAttention(nn.Module):
             max_seq_len = num_row_patches
             permutation = self.expand_permutation(max_seq_len, raw_permutation).unsqueeze(0)
             self.register_buffer("permutation", permutation)
-            self.register_buffer("ratio", torch.sigmoid(torch.arange(self.num_heads) / self.num_heads * 3 + 2).reshape(1, self.num_heads, 1, 1, 1))
+            self.register_buffer("ratio", torch.ones(self.num_heads).reshape(1, self.num_heads, 1, 1, 1))
         self.use_rope = use_rope
         if self.use_rope:
             self.rope = Lrpe(
