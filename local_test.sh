@@ -70,7 +70,8 @@ DATA=../pvc/data
 # for ARCH in linear_vit_small_l_per
 # for ARCH in linear_vit_small_per linear_vit_small_spe linear_vit_small_rope
 # for ARCH in linear_vit_small_spe
-for ARCH in linear_vit_small_per
+# for ARCH in linear_vit_small_per
+for ARCH in tnn_2d_vit_big_rpe_v8_l1_prenorm_90
 do
     CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=$GPUS --master_port=$PORT \
         --use_env $PROG --data-set CIFAR --batch-size $batch_size --num_workers 1 --lr 3e-3 \
