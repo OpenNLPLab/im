@@ -470,6 +470,37 @@ def tnn_2d_vit_big_rpe_v8_l1_prenorm_90(pretrained=False, **kwargs):
     model.default_cfg = _cfg()
 
     return model
+
+@register_model
+def tnn_2d_vit_big_rpe_64_l1_prenorm_90(pretrained=False, **kwargs):
+    dim = 768
+    glu_dim = dim
+    rpe_dim = 64
+    num_heads = 1
+    depth = 12
+    prenorm = True
+    use_decay = True
+    gamma = 0.90
+    model = TNN2DVit(
+        patch_size=16, 
+        embed_dim=dim, 
+        num_heads=num_heads, 
+        rpe_embedding=rpe_dim,
+        rpe_act="relu",
+        glu_act="silu",
+        glu_dim=glu_dim,
+        expand_ratio=3,
+        depth=depth, 
+        use_pos=False,
+        rpe_layers=1,
+        prenorm=prenorm,
+        use_decay=use_decay,
+        gamma=gamma,
+        **kwargs
+    )
+    model.default_cfg = _cfg()
+
+    return model
 ########## Deit big
 ############### model_vit
 
