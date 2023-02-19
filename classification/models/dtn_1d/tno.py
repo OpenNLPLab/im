@@ -110,7 +110,7 @@ class Tno(nn.Module):
         # input: x: b, m, d; a: 1, max(n, m), d
         # output: b, n, d
         m = x.shape[-2]
-        l = a.shape[-2]
+        l = max(n, m)
         y = torch.fft.rfft(x, 2 * l, dim=-2)
         v = torch.fft.rfft(a, 2 * l, dim=-2)
         u = v * y
