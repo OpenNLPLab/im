@@ -94,7 +94,7 @@ class Dtu(nn.Module):
         self.update_cache(x)
         n = x.shape[1]
         rpe_input = torch.cat([self.rpe_zero, self.rpe_pos[:n - 1], self.rpe_zero, self.rpe_neg[-(n-1):]], dim=0)
-        index = self.index[:n]
+        index = self.index[:, :n - 1]
         
         # x: b, h, w, d; assume h=w
         h, w = x.shape[1], x.shape[2]
@@ -117,6 +117,7 @@ class Dtu(nn.Module):
                 decay = torch.cat([zero, pos], dim=1)
         else:
             decay = None
+
         # gate1
         output = q * v
         # reshape
