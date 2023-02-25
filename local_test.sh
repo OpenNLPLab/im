@@ -78,7 +78,8 @@ DATA=../pvc/data
 # for ARCH in dnn_vit_tiny_rpe_l1_90_glu_2_4_3_no_decay
 # for ARCH in dnn_vit_tiny_rpe_l1_90_glu_2_4_3
 # for ARCH in dnn_vit_tiny_rpe_l1_90_e3_no_decay dnn_vit_tiny_rpe_l1_90_e2_no_decay dnn_vit_tiny_rpe_l1_90_e1_no_decay
-for ARCH in dnn_vit_small_rpe_l1_90_glu_2_4_3_no_decay dnn_vit_small_rpe_l1_90_e3_no_decay dnn_vit_small_rpe_l1_90_e2_no_decay dnn_vit_small_rpe_l1_90_e1_no_decay
+# for ARCH in dnn_vit_small_rpe_l1_90_glu_2_4_3_no_decay dnn_vit_small_rpe_l1_90_e3_no_decay dnn_vit_small_rpe_l1_90_e2_no_decay dnn_vit_small_rpe_l1_90_e1_no_decay
+for ARCH in dnn_vit_base_rpe_l1_90_glu_2_4_3_no_decay dnn_vit_base_rpe_l1_90_e2_no_decay
 do
     CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=$GPUS --master_port=$PORT \
         --use_env $PROG --data-set CIFAR --batch-size $batch_size --num_workers 1 --lr 3e-3 \
